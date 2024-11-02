@@ -131,6 +131,7 @@ func iDownload_rsc(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) t
 
 func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) throws {
     // Ensure dyld is patched
+    KRW.logger("[+] We are in _doit_!")
     try iDownload_rsc(hndlr, "rsc", ["MachOMerger"])
     try iDownload_rsc(hndlr, "rsc", ["libdyldhook.dylib"])
     try iDownload_rsc(hndlr, "rsc", ["ldid"])
@@ -143,7 +144,7 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     } else {
         try iDownload_rootfs(hndlr, "rootfs", ["/dev/disk0s1s8", "/dev/disk0s1s9", "/dev/disk0s1s10", "/dev/disk0s1s11", "/dev/disk0s1s12", "/dev/disk0s1s13"])
     }
-    
+    KRW.logger("[+] Dyld patched, rootfs prepared!")
     KRW.logger("Status: Extracting JB Data")
     let FuFuGuGu = Bundle.main.bundleURL.appendingPathComponent("libFuFuGuGu.dylib").path
     let jbinjector = Bundle.main.bundleURL.appendingPathComponent("jbinjector.dylib").path
@@ -159,7 +160,7 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     try FileManager.default.copyItem(atPath: jbinjector, toPath: "/usr/lib/jbinjector.dylib")
     try FileManager.default.copyItem(atPath: stashd, toPath: "/usr/bin/stashd")
     try FileManager.default.copyItem(atPath: inject_criticald, toPath: "/usr/bin/inject_criticald")
-    
+    KRW.logger("[+] resources extracted to /usr!")
     withKernelCredentials {
         _ = chown("/usr/lib/libFuFuGuGu.dylib", 0, 0)
         _ = chown("/usr/lib/jbinjector.dylib", 0, 0)
@@ -175,7 +176,7 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     KRW.logger("Status: Injecting into launchd")
     try iDownload_stashd(hndlr, "stashd", [])
     _ = try hndlr.exec("/usr/bin/inject_criticald", args: ["1", "/usr/lib/libFuFuGuGu.dylib"])
-    
+    KRW.logger("[+] libFuFuGuGu injected successfully!")
     setenv("JBINJECTOR_NO_MEMPATCH", "1", 1)
     
     let hndl = dlopen("/usr/lib/jbinjector.dylib", RTLD_NOW)
@@ -183,6 +184,7 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     let f = unsafeBitCast(dlsym(hndl, "trustCDHashesForBinaryPathSimple"), to: ft.self)
     let res = f("/usr/bin/launchctl")
     _ = f("/usr/bin/dash")
+    KRW.logger("[+] jbinjector dlopened and running ok!")
     
     unsetenv("JBINJECTOR_NO_MEMPATCH")
     
@@ -190,7 +192,7 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     
     setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/jbinjector.dylib", 1)
     setenv("DYLD_AMFI_FAKE", "0xFF", 1)
-    
+    KRW.logger("[+] Env vars set!")
 //    KRW.logger("Status: Running uicache")
 //    _ = try? hndlr.exec("/usr/bin/dash", args: ["-c", "uicache -a"])
     
@@ -199,7 +201,7 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
 
 func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) throws {
     let stashd = "/usr/bin/stashd"
-    
+    KRW.logger("[+] Launching stashd...")
     let cache = URL(fileURLWithPath: getKernelcacheDecompressedPath()!).deletingLastPathComponent().appendingPathComponent("pf.plist")
     try KRW.patchfinder.exportResults()!.write(to: cache)
     
@@ -282,7 +284,7 @@ func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]
     _ = pipe.send(message: ["action": "pacBypass2Stashd"])
     
     KRW.cleanup()
-    
+    KRW.logger("[+] stashd launched!")
     try hndlr.sendline("OK")
 }
 
@@ -345,7 +347,7 @@ func iDownload_cleanup(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
 
 func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) throws {
     unsetenv("DYLD_LIBRARY_PATH")
-    
+    KRW.logger("[+] We are in autorun!")
     try iDownload_tcload(hndlr, "tcload", [Bundle.main.bundleURL.appendingPathComponent("Fugu15_test.tc").path])
     
     KRW.logger("Status: Preparing FS")
@@ -359,7 +361,7 @@ func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
     
     try iDownload_doit(hndlr, "doit", [])
 //    try iDownload_loadSSH(hndlr, "loadSSH", [])
-    
+    KRW.logger("====Jailbreoken====")
     jbDone = true
 }
 

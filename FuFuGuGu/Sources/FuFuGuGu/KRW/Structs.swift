@@ -322,7 +322,7 @@ public class IS_Table: KernelObject {
 public class KPort: KernelObject {
     public var kObject: UInt64? {
         var PORT_KOBJECT: UInt64 = 0x58
-        if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >= 2 {
+        if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion > 2 {
             PORT_KOBJECT = 0x48
         }
         

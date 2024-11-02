@@ -61,7 +61,7 @@ public extension KRW {
         }
         
         print("[+++] Bypassed PAC!")
-        
+        logger("[+++] Bypassed PAC!")
         setupFugu14Kcall()
         deinitFugu15PACBypass()
         

