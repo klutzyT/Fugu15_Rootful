@@ -4,11 +4,11 @@ all: Fugu15.ipa
 
 Fugu15.ipa: Build/Products/Debug-iphoneos/Fugu15.app
 	@echo Ad-Hoc signing Fugu15
-	codesign -s - --entitlements Fugu15/Fugu15.entitlements Build/Products/Debug-iphoneos/Fugu15.app
+	codesign -s - --entitlements Fugu15/Fugu15.entitlements build/Build/Products/Debug-iphoneos/Fugu15.app
 	@echo Creating ipa
 	rm -rf Payload Fugu15.ipa
 	mkdir Payload
-	cp -r Build/Products/Debug-iphoneos/Fugu15.app Payload/Fugu15.app
+	cp -r build/Build/Products/Debug-iphoneos/Fugu15.app Payload/Fugu15.app
 	zip -Ar Fugu15.ipa Payload
 	rm -rf Payload
 
