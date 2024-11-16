@@ -10,6 +10,7 @@ import CBridge
 import SwiftUtils
 import SwiftXPCCBindings
 import SwiftXPC
+import OSLog
 
 var console: Int32 = 0
 
@@ -18,7 +19,7 @@ func myStripPtr(_ ptr: OpaquePointer) -> UInt64 {
 }
 
 func log(_ str: String) {
-    write(console, str + "\n", str.count + 1)
+//    OSLog(str)
     //sleep(1)
 }
 
@@ -53,9 +54,9 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
                         
                         if let forceDisablePAC = request["forceDisablePAC"] as? UInt64,
                            forceDisablePAC == 1 {
-                            pmap.jop_disabled = 1
-                            proc.task?.jop_disabled = 1
-                            proc.task?.firstThread?.jop_disabled = 1
+//                            pmap.jop_disabled = 1
+//                            proc.task?.jop_disabled = 1
+//                            proc.task?.firstThread?.jop_disabled = 1
                             
                             reply["pacDisabled"] = 1 as UInt64
                         }
@@ -308,18 +309,18 @@ public func swift_init(_ consoleFD: Int32, _ servicePort: mach_port_t, _ XPCServ
                 return
             }
             
-            log("About to ask stashd to init PAC bypass")
+//            log("About to ask stashd to init PAC bypass")
             
             guard let rpl = pipe.send(message: ["action": "initPACBypass", "thread": kobj]) as? XPCDict else {
                 log("pipe.send[initPACBypass] failed!")
                 return
             }
             
-            log("About to KRW.receiveKCall")
+//            log("About to KRW.receiveKCall")
             
             try KRW.receiveKCall(thPort: kcallTh)
             
-            log("Got PPL and PAC bypass!")
+//            log("Got PPL and PAC bypass!")
             
             _ = pipe.send(message: ["action": "exit"])
         }

@@ -80,6 +80,10 @@ const char* xpcproxy_blacklist[] = {
     "osanalyticshelper",
     "BlastDoor",
     "wifid",
+    "MessagesBlastDoorService",
+    "IDSBlastDoorService",
+    "GSSCred",
+    "com.apple.WebKit.WebContent",
     NULL
 };
 

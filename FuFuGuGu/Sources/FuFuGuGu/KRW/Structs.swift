@@ -56,7 +56,7 @@ public class Proc: KernelObject {
         
         // Try up to five times
         // XXX: This is ugly
-        for i in 0..<5 {
+        for i in 0..<8 {
             do {
                 var curProc = try KRW.slide(virt: allproc)
                 while curProc != 0 {
@@ -238,7 +238,7 @@ public class Task: KernelObject {
         set {
             if let new = newValue {
                 var offset: UInt64 = 0x370
-                if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >= 2 {
+                if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >=  2 {
                     // FIXME: Hardcoded offsets
                     offset = 0x348
                 }

@@ -6,6 +6,7 @@
 //
 
 #include <stdio.h>
+#include <os/log.h>
 //#include <bootstrap.h>
 #include <spawn.h>
 #include <unistd.h>
@@ -66,12 +67,12 @@ xpc_pipe_t gJBDPipe  = NULL;
 mach_port_t gJBDPort = MACH_PORT_NULL;
 int disableSpawnInterpose = 0;
 
-#ifdef DEBUG
-#define debug(a...) printf(a)
-//#define debug(a...) dprintf(gLogfd,a)
-#else
-#define debug(a...)
-#endif
+//#ifdef DEBUG
+//#define debug(a...) printf(a)
+////#define debug(a...) dprintf(gLogfd,a)
+//#else
+//#define debug(a...)
+//#endif
 
 #define safeClose(fd) do{if ((fd) != -1){close(fd); fd = -1;}}while(0)
 #define safeFree(buf) do{if ((buf)){free(buf); buf = NULL;}}while(0)
@@ -133,6 +134,10 @@ const char* xpcproxy_blacklist[] = {
     "osanalyticshelper",
     "BlastDoor",
     "wifid",
+    "MessagesBlastDoorService",
+    "IDSBlastDoorService",
+    "GSSCred",
+    "com.apple.WebKit.WebContent",
     NULL
 };
 
@@ -144,6 +149,16 @@ int isBlacklisted(const char *name) {
     }
     
     return 0;
+}
+
+void debug(char *format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    char buffer[256];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    os_log_error(OS_LOG_DEFAULT, "%{public}s", buffer);
+    va_end(args);
 }
 
 #pragma mark lib
@@ -263,7 +278,7 @@ int sbtoken(const char *path, int rw) {
         assure(req = xpc_dictionary_create(NULL, NULL, 0));
         xpc_dictionary_set_string(req, "action", "sbtoken");
         xpc_dictionary_set_string(req, "path", path);
-        if (rw) {
+        if (rw == 0) {
             xpc_dictionary_set_uint64(req, "rw", 1);
         }
         assure(!xpc_pipe_routine(gJBDPipe, req, &rsp));
@@ -963,23 +978,6 @@ int hookAddr(void *addr, void *target){
     target_address = NULL;
     
     assure(!(kret = my_vm_protect(mach_task_self_, (mach_vm_address_t)hooktgt, (sizeof(DYLD_NEEDLE)-1)+sizeof(uint64_t), 0, VM_PROT_READ | VM_PROT_EXECUTE)));
-    /*{
-        vm_prot_t cur = 0;
-        vm_prot_t max = 0;
-        assure(!(kret = vm_remap(mach_task_self_, (vm_address_t*)&target_address, (sizeof(DYLD_NEEDLE)-1)+sizeof(uint64_t), 0, VM_FLAGS_ANYWHERE | VM_FLAGS_RETURN_DATA_ADDR, mach_task_self_, (mach_vm_address_t)hooktgt, false, &cur, &max, VM_INHERIT_NONE)));
-        assure(!(kret = vm_protect(mach_task_self_, (mach_vm_address_t)target_address, (sizeof(DYLD_NEEDLE)-1)+sizeof(uint64_t), 0, VM_PROT_READ | VM_PROT_WRITE)));
-        debug("Applying hook doing write\n");
-        memcpy(target_address, DYLD_PATCH, sizeof(DYLD_PATCH)-1);
-        uint64_t ptr = (uint64_t)target;
-        ptr &= ~0xffff000000000000;
-#ifdef __aarch64__
-        *(void**)&target_address[sizeof(DYLD_PATCH)-1] = (void*)ptr;
-#else
-        *(void**)&target_address[2] = (void*)ptr;
-#endif
-        vm_inherit(mach_task_self_, (vm_address_t) hooktgt, (sizeof(DYLD_NEEDLE)-1)+sizeof(uint64_t), VM_INHERIT_COPY);
-    }*/
-    
 error:
     if (target_address){
         kret = vm_deallocate(mach_task_self_, (mach_vm_address_t)target_address, (sizeof(DYLD_NEEDLE)-1)+sizeof(uint64_t));
@@ -1041,7 +1039,7 @@ int hookFork(void){
     int err = 0;
     uint8_t *hooktgt = NULL;
     
-    debug("hookFork\n");
+//    debug("hookFork\n");
     uint8_t *nearbyLoc = (uint8_t*)ptrauth_strip((void*) mach_ports_register, 0);
     size_t searchSize = PAGE_SIZE*10;
 
@@ -1175,7 +1173,7 @@ __attribute__((constructor))  int constructor(){
 #endif
 
 #ifdef DEBUG
-    init_dbglog();
+//    init_dbglog();
 #endif
     
 #ifdef XCODE
@@ -1185,15 +1183,13 @@ __attribute__((constructor))  int constructor(){
     
     debug("hello");
     
-    {
         //remove injected env vars
-        unsetenv(INJECT_KEY2);
-        char *dyldvar = getenv(INJECT_KEY);
-        if (dyldvar) {
-            char *origvar = strstr(dyldvar, ":");
-            if (origvar) setenv(INJECT_KEY, origvar+1, 1);
-            else unsetenv(INJECT_KEY);
-        }
+    unsetenv(INJECT_KEY2);
+    char *dyldvar = getenv(INJECT_KEY);
+    if (dyldvar) {
+        char *origvar = strstr(dyldvar, ":");
+        if (origvar) setenv(INJECT_KEY, origvar+1,1);
+        else unsetenv(INJECT_KEY);
     }
     
     debug("hello\n");
@@ -1229,6 +1225,7 @@ __attribute__((constructor))  int constructor(){
     if ((realOps & CS_GET_TASK_ALLOW) == 0) {
         // libdyldhook was apparently unable to give CSDebug to us -> do that now
         giveCSDEBUGToPid(getpid(), 0);
+        debug("prank");
     }
     
     fixupImages();
@@ -1252,6 +1249,7 @@ __attribute__((constructor))  int constructor(){
     
     char pathbuf[PATH_MAX+0x1];
     int err = proc_pidpath(getpid(), pathbuf, sizeof(pathbuf));
+    debug("path: %s", pathbuf);
     if (err >= 0) {
         if (strstr(pathbuf, "xpcproxy") == NULL && !isBlacklisted(pathbuf)) {
             debug("Will also hook posix_spawn\n");
@@ -1265,6 +1263,16 @@ __attribute__((constructor))  int constructor(){
             sbtoken("/private/var/db", 0);
             sbtoken("/private/var/stash", 0);
             
+//            if (access("/usr/lib/oldabi.dylib", F_OK)){
+            debug("dlopen oldabi");
+            void *h = dlopen("/usr/lib/oldabi.dylib", RTLD_NOW);
+            debug("dlopened oldabi");
+            if (!h)
+                debug("oldabi dlopen failed: %s\n", dlerror());
+            else
+                debug("oldabi ok");
+//            }
+            
             debug("Will dlopen...\n");
             void *hndl = dlopen("/usr/lib/TweakInject.dylib", RTLD_NOW);
             if (!hndl) {
@@ -1272,6 +1280,7 @@ __attribute__((constructor))  int constructor(){
             } else {
                 debug("dlopen ok!\n");
             }
+            
         } else {
             debug("xpcproxy or blacklisted -> not injecting\n");
         }
@@ -1279,11 +1288,11 @@ __attribute__((constructor))  int constructor(){
         debug("proc_pidpath failed -> not injecting\n");
     }
     
-    debug("All done!\n");
+    debug("\n======All done!======\n");
     
 #ifdef XCODE
     fork();
-    debug("Fork done!\n");
+//    debug("Fork done!\n");
     sleep(4);
 #endif
     

@@ -184,6 +184,10 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     let f = unsafeBitCast(dlsym(hndl, "trustCDHashesForBinaryPathSimple"), to: ft.self)
     let res = f("/usr/bin/launchctl")
     _ = f("/usr/bin/dash")
+    _ = f("/usr/bin/dpkg")
+    _ = f("/usr/bin/dpkg-deb")
+    _ = f("/usr/bin/apt")
+    _ = f("/usr/bin/uicache")
     KRW.logger("[+] jbinjector dlopened and running ok!")
     
     unsetenv("JBINJECTOR_NO_MEMPATCH")
@@ -193,8 +197,8 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/jbinjector.dylib", 1)
     setenv("DYLD_AMFI_FAKE", "0xFF", 1)
     KRW.logger("[+] Env vars set!")
-//    KRW.logger("Status: Running uicache")
-//    _ = try? hndlr.exec("/usr/bin/dash", args: ["-c", "uicache -a"])
+    KRW.logger("Status: Running uicache")
+    _ = try? hndlr.exec("/usr/bin/dash", args: ["-c", "uicache -a"])
     
     try hndlr.sendline("OK")
 }
@@ -277,7 +281,6 @@ func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]
         try KRW.initKCallInThread(thread: th)
     } catch let e {
         kill(child, SIGKILL)
-        
         throw e
     }
     
@@ -347,7 +350,7 @@ func iDownload_cleanup(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
 
 func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) throws {
     unsetenv("DYLD_LIBRARY_PATH")
-    KRW.logger("[+] We are in autorun!")
+    KRW.logger("[+] We are in _autorun_!")
     try iDownload_tcload(hndlr, "tcload", [Bundle.main.bundleURL.appendingPathComponent("Fugu15_test.tc").path])
     
     KRW.logger("Status: Preparing FS")
@@ -361,7 +364,7 @@ func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
     
     try iDownload_doit(hndlr, "doit", [])
 //    try iDownload_loadSSH(hndlr, "loadSSH", [])
-    KRW.logger("====Jailbreoken====")
+    KRW.logger("====Jailbroken====")
     jbDone = true
 }
 

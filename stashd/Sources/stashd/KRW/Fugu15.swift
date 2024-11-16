@@ -35,5 +35,5 @@ func initFromFugu15() throws {
     }
     
     try KRW.doInit(kernelBase: kernelBase, magicPage: pplMagicPage, cpuTTEP: cpuTTEP)
-    try print("\(PPLRW.r64(virt: kernelBase))")
+//    try print("\(PPLRW.r64(virt: kernelBase))")
 }
