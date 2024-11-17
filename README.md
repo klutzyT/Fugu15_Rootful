@@ -5,7 +5,7 @@ Special thanks to [tihmstar](https://twitter.com/tihmstar) for helping to turn F
 
 # Current state
 Fixed "TC" problem. 
-[here](https://ghh-jb.github.io/repo/fugu.png) you can see. 
+[here](https://ghh-jb.github.io/repo/fugu.jpg) you can see. 
 
 
 # WARNING - ONLY FOR DEVELOPERS
