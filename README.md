@@ -4,8 +4,9 @@ This version includes full support for tweaks and is rootful.
 Special thanks to [tihmstar](https://twitter.com/tihmstar) for helping to turn Fugu15 into a full jailbreak and for extensively testing it.
 
 # Current state
-Fixed "TC" problem. 
++ Fixed "TC" problem. 
 [here](https://ghh-jb.github.io/repo/fugu.jpg) you can see. 
+- Need to find kernel offsets of jop_disabled bit. oldabi is a solution for now.
 
 
 # WARNING - ONLY FOR DEVELOPERS
