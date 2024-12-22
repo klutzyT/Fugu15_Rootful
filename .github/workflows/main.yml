@@ -47,5 +47,5 @@ jobs:
         with:
             name: Rootful
             path: |
-             /Fugu15/Fugu15.ipa
+             Fugu15/Fugu15.ipa
        
