@@ -8,5 +8,5 @@ all %:
 	$(MAKE) -C stashd $@
 	$(MAKE) -C MachOMerger $@
 	$(MAKE) -C libdyldhook $@
-	CryptexManager buildTrustCache TrustCache Fugu15/Fugu15_test.tc
-	$(MAKE) -C Fugu15 $@
+	./trustcache_macos_x86_64 create Fugu15/Fugu15_test.tc TrustCache
+	$(MAKE) -C Fugu15 Fugu15.ipa
