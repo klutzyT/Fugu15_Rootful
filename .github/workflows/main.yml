@@ -41,11 +41,11 @@ jobs:
           sudo cp -a /Applications/Xcode_14.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/xpc* /Applications/Xcode_14.2.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/
           sudo cp -a /Applications/Xcode_14.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/launch.h /Applications/Xcode_14.2.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/
           make
-
-            - name: Upload Artifact
-             uses: actions/upload-artifact@v3
-             with:
-              name: Rootful
-              path: |
-                ${{ github.workspace }}/Fugu15/Fugu15.ipa
+      
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+            name: Rootful
+            path: |
+             /Fugu15/Fugu15.ipa
        
