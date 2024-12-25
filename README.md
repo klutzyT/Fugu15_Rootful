@@ -12,6 +12,8 @@ Special thanks to [tihmstar](https://twitter.com/tihmstar) for helping to turn F
 # WARNING - ONLY FOR DEVELOPERS
 No support will be provided for this version of Fugu15. Feel free to fix it if you want to, but note that no pull requests will be accepted as I'm done with jailbreaking.  
 
+Attettion!!! This caused bootloop on my friend's phone! Do not istall this unless you really know what tou are doing!
+
 # Tested Devices and iOS Versions
 - iPhone Xs Max: iOS 15.4.1
 - iPhone 13 Pro: iOS 15.1
