@@ -19,18 +19,6 @@ func myStripPtr(_ ptr: OpaquePointer) -> UInt64 {
 }
 
 public func log(_ str: String) {
-//    var inf = str + "\n"
-//    let logger = URL(fileURLWithPath: "/var/mobile/Documents/console1")
-//    do{
-//        if let handle = try? FileHandle(forWritingTo: logger) {
-//            handle.seekToEndOfFile() // moving pointer to the end
-//            handle.write(inf.data(using: .utf8)!) // adding content
-//            handle.closeFile() // closing the file not really needed in our case
-//        }
-//    } catch{
-//        print("Error writing")
-//    }
-//    //sleep(1)
 }
 
 func consolelog(_ str: String) {
@@ -38,14 +26,13 @@ func consolelog(_ str: String) {
     let logger = URL(fileURLWithPath: "/var/mobile/Documents/console")
     do{
         if let handle = try? FileHandle(forWritingTo: logger) {
-            handle.seekToEndOfFile() // moving pointer to the end
-            handle.write(inf.data(using: .utf8)!) // adding content
-            handle.closeFile() // closing the file not really needed in our case
+            handle.seekToEndOfFile()
+            handle.write(inf.data(using: .utf8)!)
+            handle.closeFile()
         }
     } catch{
         print("Error writing")
     }
-    //sleep(1)
 }
 
 
@@ -67,10 +54,15 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
         log("Got action \(action)")
         switch action {
         case "fix_setuid":
+            consolelog("fix_setuid invoked")
             if let pid = request["pid"] as? UInt64 {
+                consolelog("pid: \(pid)")
                 if let path = request["path"] as? String {
+                    consolelog("binary: \(path)")
+                    
+                    
+                    
                     /// THIS IS CURRENTLY UNFINISHED AND AIMING TO GET SU AND SUDO (SETUID THINGS) WORKING!
-                    logError(message: "Invoked fixsetuid with pid:\(pid) path:\(path)")
                 }
             }
         case "csdebug":
