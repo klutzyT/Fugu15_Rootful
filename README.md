@@ -4,10 +4,10 @@ This version includes full support for tweaks and is rootful.
 Special thanks to [tihmstar](https://twitter.com/tihmstar) for helping to turn Fugu15 into a full jailbreak and for extensively testing it.
 
 # Current state
-This is incomplete fix. "TC" error possibly happens because we dont have a userspace reboot working. 
-Testing on 15.2 so it is very interesting what will be the next problem:)
-***Waiting to fix***
-- jbinjector
++ Fixed "TC" problem. 
+[here](https://ghh-jb.github.io/repo/fugu.jpg) you can see. 
+- Need to find kernel offsets of jop_disabled bit. oldabi is a solution for now.
+
 
 # WARNING - ONLY FOR DEVELOPERS
 No support will be provided for this version of Fugu15. Feel free to fix it if you want to, but note that no pull requests will be accepted as I'm done with jailbreaking.  
