@@ -24,7 +24,7 @@ public class KernelObject {
         try KRW.r64(virt: self.address + offset)
     }
     
-    public func r32(offset: UInt64) throws -> UInt32 {
+    public func r32(offset:UInt64) throws -> UInt32 {
         try KRW.r32(virt: self.address + offset)
     }
     

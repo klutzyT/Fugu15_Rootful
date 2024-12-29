@@ -499,7 +499,7 @@
 					"-framework",
 					IOKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "de.pinauten.Fugu15-Real";
+				PRODUCT_BUNDLE_IDENTIFIER = "de.pinauten.Fugu15-Rootful";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRIP_INSTALLED_PRODUCT = NO;
 				STRIP_STYLE = debugging;
@@ -545,7 +545,7 @@
 					"-framework",
 					IOKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "de.pinauten.Fugu15-Real";
+				PRODUCT_BUNDLE_IDENTIFIER = "de.pinauten.Fugu15-Rootful";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRIP_INSTALLED_PRODUCT = NO;
 				STRIP_STYLE = debugging;

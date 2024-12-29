@@ -10,7 +10,7 @@ import CBridge
 import SwiftUtils
 import SwiftXPCCBindings
 import SwiftXPC
-import OSLog
+import os.log
 
 var console: Int32 = 0
 
@@ -18,10 +18,36 @@ func myStripPtr(_ ptr: OpaquePointer) -> UInt64 {
     UInt64(UInt(bitPattern: stripPtr(ptr)))
 }
 
-func log(_ str: String) {
-//    OSLog(str)
+public func log(_ str: String) {
+//    var inf = str + "\n"
+//    let logger = URL(fileURLWithPath: "/var/mobile/Documents/console1")
+//    do{
+//        if let handle = try? FileHandle(forWritingTo: logger) {
+//            handle.seekToEndOfFile() // moving pointer to the end
+//            handle.write(inf.data(using: .utf8)!) // adding content
+//            handle.closeFile() // closing the file not really needed in our case
+//        }
+//    } catch{
+//        print("Error writing")
+//    }
+//    //sleep(1)
+}
+
+func consolelog(_ str: String) {
+    var inf = str + "\n"
+    let logger = URL(fileURLWithPath: "/var/mobile/Documents/console")
+    do{
+        if let handle = try? FileHandle(forWritingTo: logger) {
+            handle.seekToEndOfFile() // moving pointer to the end
+            handle.write(inf.data(using: .utf8)!) // adding content
+            handle.closeFile() // closing the file not really needed in our case
+        }
+    } catch{
+        print("Error writing")
+    }
     //sleep(1)
 }
+
 
 /*
                             0x36001025
@@ -40,6 +66,13 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
         
         log("Got action \(action)")
         switch action {
+        case "fix_setuid":
+            if let pid = request["pid"] as? UInt64 {
+                if let path = request["path"] as? String {
+                    /// THIS IS CURRENTLY UNFINISHED AND AIMING TO GET SU AND SUDO (SETUID THINGS) WORKING!
+                    logError(message: "Invoked fixsetuid with pid:\(pid) path:\(path)")
+                }
+            }
         case "csdebug":
             if let pid = request["pid"] as? UInt64 {
                 if let proc = try? Proc(pid: pid_t(pid)) {
@@ -54,9 +87,12 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
                         
                         if let forceDisablePAC = request["forceDisablePAC"] as? UInt64,
                            forceDisablePAC == 1 {
-//                            pmap.jop_disabled = 1
-//                            proc.task?.jop_disabled = 1
-//                            proc.task?.firstThread?.jop_disabled = 1
+                            /// ATTENTION!!! OFFFSETS ARE HARDCODED FOR iPhone SE 2020 iOS 15.2
+                            /// For correct offsets - disassemble iOS kernel
+                            /// If these offsets dont work -
+                            pmap.jop_disabled = 1                    //0xC8  [+]   0xC4  [+]   0xC0  [-]
+                            proc.task?.jop_disabled = 1              //0x348 [+]
+                            proc.task?.firstThread?.jop_disabled = 1 //0x15E [+]               0x15F [-]
                             
                             reply["pacDisabled"] = 1 as UInt64
                         }
@@ -309,18 +345,18 @@ public func swift_init(_ consoleFD: Int32, _ servicePort: mach_port_t, _ XPCServ
                 return
             }
             
-//            log("About to ask stashd to init PAC bypass")
+            log("About to ask stashd to init PAC bypass")
             
             guard let rpl = pipe.send(message: ["action": "initPACBypass", "thread": kobj]) as? XPCDict else {
                 log("pipe.send[initPACBypass] failed!")
                 return
             }
             
-//            log("About to KRW.receiveKCall")
+            log("About to KRW.receiveKCall")
             
             try KRW.receiveKCall(thPort: kcallTh)
             
-//            log("Got PPL and PAC bypass!")
+            log("Got PPL and PAC bypass!")
             
             _ = pipe.send(message: ["action": "exit"])
         }
@@ -367,11 +403,11 @@ public func swift_init(_ consoleFD: Int32, _ servicePort: mach_port_t, _ XPCServ
             (orig: "posix_spawn", replacement: "my_posix_spawn"),
             (orig: "posix_spawnp", replacement: "my_posix_spawnp"),
             (orig: "xpc_receive_mach_msg", replacement: "my_xpc_receive_mach_msg")
-            /*
+              /*
                 DO NOT INTERPOSE THIS!!!
                 IT WILL BREAK AIRPLAY AND POSSIBLY OTHER THINGS!!!!
 //             (orig: "kill", replacement: "my_kill"),
-             */
+              */
         ] as [(orig: String, replacement: String)]
         
         try doFixups(fixups: fixups)
