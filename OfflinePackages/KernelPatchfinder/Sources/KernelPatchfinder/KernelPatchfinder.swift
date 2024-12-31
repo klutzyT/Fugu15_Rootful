@@ -944,6 +944,64 @@ open class KernelPatchfinder {
         }
     }()
     
+    
+    public lazy var proc_rele: UInt64? = {
+        // all functions that reference this string call proc_find at the end
+        guard let entitlement_str = cStrSect.addrOf("com.apple.private.process.suspend-resume.any") else {
+            return nil
+        }
+
+        guard let ref: UInt64 = textExec.findNextXref(to: entitlement_str, startAt:nil, optimization: .noBranches) else {
+            return nil
+        }
+
+        var funcEnd = ref
+        while (textExec.instruction(at: funcEnd) ?? 0) != 0xD65F0FFF {
+            funcEnd += 4
+        }
+
+        var proc_rele: UInt64!
+        for i in 1..<50 {
+            let pc = funcEnd - UInt64(i * 4)
+            let target = AArch64Instr.Emulate.bl(textExec.instruction(at: pc) ?? 0, pc: pc)
+            if target != nil {
+                proc_rele = target
+                break
+            }
+        }
+
+        return proc_rele
+    }()
+    
+    
+    public lazy var proc_find: UInt64? = {
+            // all functions that reference this string call proc_find at the top
+            guard let entitlement_str = cStrSect.addrOf("com.apple.private.process.suspend-resume.any") else {
+                return nil
+            }
+
+            guard let ref: UInt64 = textExec.findNextXref(to: entitlement_str, startAt:nil, optimization: .noBranches) else {
+                return nil
+            }
+
+            var funcStart = ref
+            while !AArch64Instr.isPacibsp(textExec.instruction(at: funcStart) ?? 0) {
+                funcStart -= 4
+            }
+
+            var proc_find: UInt64!
+            for i in 1..<50 {
+                let pc = funcStart + UInt64(i * 4)
+                let target = AArch64Instr.Emulate.bl(textExec.instruction(at: pc) ?? 0, pc: pc)
+                if target != nil {
+                    proc_find = target
+                    break
+                }
+            }
+
+            return proc_find
+        }()
+    
     /// `pmap_alloc_page_for_kern` function
     public lazy var pmap_alloc_page_for_kern: UInt64? = {
         if cachedResults != nil {
@@ -1039,7 +1097,9 @@ open class KernelPatchfinder {
             "ptov_data_virtBase": ptov_data?.virtBase,
             "pmap_alloc_page_for_kern": pmap_alloc_page_for_kern,
             "pivot_root": pivot_root,
-            "pacda_gadget": pacda_gadget
+            "pacda_gadget": pacda_gadget,
+            "proc_rele": proc_rele,
+            "proc_find": proc_find
         ]
         
         let results = results_opt.filter { (k, v) in

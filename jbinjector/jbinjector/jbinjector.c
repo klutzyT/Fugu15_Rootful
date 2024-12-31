@@ -1268,7 +1268,7 @@ __attribute__((constructor))  int constructor(){
 //            if (access("/usr/lib/oldabi.dylib", F_OK)){
             /*
             debug("dlopen oldabi");
-            void *h = dlopen("/usr/lib/oldabi.dylib", RTLD_NOW);
+            void *h = dlopen("/usr/lъib/oldabi.dylib", RTLD_NOW);
             debug("dlopened oldabi");
             if (!h)
                 debug("oldabi dlopen failed: %s\n", dlerror());

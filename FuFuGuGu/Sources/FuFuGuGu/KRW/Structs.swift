@@ -48,7 +48,19 @@ public class KernelObject {
     }
 }
 
-
+//func consolelog(_ str: String) {
+//    var inf = str + "\n"
+//    let logger = URL(fileURLWithPath: "/var/mobile/Documents/console")
+//    do{
+//        if let handle = try? FileHandle(forWritingTo: logger) {
+//            handle.seekToEndOfFile()
+//            handle.write(inf.data(using: .utf8)!)
+//            handle.closeFile()
+//        }
+//    } catch{
+//        print("Error writing")
+//    }
+//}
 
 public class Proc: KernelObject {
     public convenience init?(pid: pid_t) throws {
@@ -231,7 +243,7 @@ public class Task: KernelObject {
             var offset: UInt64 = 0x370 //panic
             if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >= 2 {
                 // FIXME: Hardcoded offsets
-                offset = 0x348 
+                offset = 0x348
             }
         
             

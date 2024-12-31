@@ -10,7 +10,8 @@ import CBridge
 import SwiftUtils
 import SwiftXPCCBindings
 import SwiftXPC
-import os.log
+import Darwin
+
 
 var console: Int32 = 0
 
@@ -54,15 +55,29 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
         log("Got action \(action)")
         switch action {
         case "fix_setuid":
-            consolelog("fix_setuid invoked")
+            consolelog("fix_setuid")
             if let pid = request["pid"] as? UInt64 {
                 consolelog("pid: \(pid)")
-                if let path = request["path"] as? String {
-                    consolelog("binary: \(path)")
-                    
-                    
-                    
-                    /// THIS IS CURRENTLY UNFINISHED AND AIMING TO GET SU AND SUDO (SETUID THINGS) WORKING!
+                if let proc = try? Proc(pid: pid_t(pid))?.address{
+                    consolelog("proc: \(proc)")
+                    if let path = request["path"] as? String {
+                        consolelog("binary: \(path)")
+                        var sb = stat()
+                        if stat(path, &sb) == 0 {
+                            
+                        }
+                        let ro = try! KRW.rPtr(virt:proc &+ 0x20)
+                        let ucred = try! KRW.rPtr(virt:ro &+ 0x20)
+                        consolelog("st_mode: \(sb.st_mode)")
+                        try? KRW.w32(virt: proc &+ 0x44, value: sb.st_uid)        //proc svuid set
+                        let cr_posix_ptr = ucred &+ 0x18
+                        try? KRW.w32(virt: cr_posix_ptr &+ 0x8, value:sb.st_uid)        //ucred svuid set
+                        try? KRW.w32(virt: cr_posix_ptr &+ 0x0, value: sb.st_uid) //ucred uid set
+                        try? KRW.w32(virt: proc &+ 0x48, value: sb.st_gid) //proc svgid set
+                        try? KRW.w32(virt: cr_posix_ptr &+ 0x54, value: sb.st_gid) //ucred svgid set
+
+                        try? KRW.w32(virt: cr_posix_ptr &+ 0x10, value: sb.st_gid) //ucred cr_groups set
+                    }
                 }
             }
         case "csdebug":
