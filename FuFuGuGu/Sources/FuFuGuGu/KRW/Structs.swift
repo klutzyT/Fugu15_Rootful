@@ -48,6 +48,8 @@ public class KernelObject {
     }
 }
 
+
+
 public class Proc: KernelObject {
     public convenience init?(pid: pid_t) throws {
         guard let allproc = KRW.patchfinder.allproc else {
@@ -56,7 +58,7 @@ public class Proc: KernelObject {
         
         // Try up to five times
         // XXX: This is ugly
-        for i in 0..<8 {
+        for i in 0..<5 {
             do {
                 var curProc = try KRW.slide(virt: allproc)
                 while curProc != 0 {
@@ -226,23 +228,25 @@ public class Task: KernelObject {
     
     public var jop_disabled: UInt8? {
         get {
-            var offset: UInt64 = 0x370
+            var offset: UInt64 = 0x370 //panic
             if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >= 2 {
                 // FIXME: Hardcoded offsets
-                offset = 0x348
+                offset = 0x348 
             }
+        
             
             return try? r8(offset: offset)
         }
         
         set {
             if let new = newValue {
-                var offset: UInt64 = 0x370
+                var offset: UInt64 = 0x370 //panic
                 if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >=  2 {
                     // FIXME: Hardcoded offsets
                     offset = 0x348
                 }
                 
+            
                 try? KRW.w8(virt: address + offset, value: new)
             }
         }
@@ -274,9 +278,11 @@ public class KThread: KernelObject {
                 if KRW.patchfinder.kernel_el == 2 {
                     offset = 0x15F
                 } else {
-                    offset = 0x156
+//                    offset = 0x156
+                    offset = 0x15E
                 }
             }
+            
             
             return try? r8(offset: offset)
         }
@@ -289,7 +295,8 @@ public class KThread: KernelObject {
                     if KRW.patchfinder.kernel_el == 2 {
                         offset = 0x15F
                     } else {
-                        offset = 0x156
+//                        offset = 0x156
+                        offset = 0x15E
                     }
                 }
                 
@@ -500,7 +507,6 @@ public class PMap: KernelObject {
     public var jop_disabled: UInt8? {
         get {
             let adjust: UInt64 = (KRW.patchfinder.kernel_el == 2) ? 8 : 0
-            
             return try? r8(offset: 0xC2 &+ adjust)
         }
         
@@ -510,8 +516,10 @@ public class PMap: KernelObject {
             }
             
             let adjust: UInt64 = (KRW.patchfinder.kernel_el == 2) ? 8 : 0
-            
+            /*
             try? KRW.pplwrite(virt: self.address &+ 0xC0 &+ adjust, data: Data(fromObject: 0x0101010101010101 as UInt64))
+            */
+            try? KRW.pplwrite(virt: self.address &+ 0xC4 &+ adjust, data: Data(fromObject: 0x0101010101010101 as UInt64))
             try? KRW.pplwrite(virt: self.address &+ 0xC8 &+ adjust, data: Data(fromObject: 0x0101010101010100 as UInt64))
         }
     }

@@ -51,7 +51,7 @@ func testkrwstuff() throws {
         KRW.logger("[+] Got ourProc of port \(kobject)")
         break
     }
-    let surface = try KRW.rPtr(virt: kobject + 0x18/* IOSurfaceSendRight -> IOSurface */)
+    let surface = try KRW.rPtr(virt: kobject + 0x18/* IOSurfaceSendRight->IOSurface */)
     
     let surfaceBase = surface & ~0x3FFF
     let surfaceOff  = surface & 0x3FFF

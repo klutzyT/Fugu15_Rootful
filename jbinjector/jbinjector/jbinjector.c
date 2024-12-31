@@ -134,10 +134,9 @@ const char* xpcproxy_blacklist[] = {
     "osanalyticshelper",
     "BlastDoor",
     "wifid",
-    "MessagesBlastDoorService",
-    "IDSBlastDoorService",
     "GSSCred",
     "com.apple.WebKit.WebContent",
+    "Cydia",                  // --__--
     NULL
 };
 
@@ -246,16 +245,16 @@ int fixprot(pid_t pid, xpc_object_t start, xpc_object_t end, uint64_t forceExec)
     return err;
 }
 
-int fixpermanent(pid_t pid, uint64_t start, size_t len) {
+int fix_setuid(pid_t pid, char* pathbuf) {
     int err = 0;
+    debug("setuid needed for path: %s pid: %i", pathbuf, pid);
     if (gJBDPipe){
         xpc_object_t req = NULL;
         xpc_object_t rsp = NULL;
         assure(req = xpc_dictionary_create(NULL, NULL, 0));
-        xpc_dictionary_set_string(req, "action", "fixpermanent");
+        xpc_dictionary_set_string(req, "action", "fix_setuid");
         xpc_dictionary_set_uint64(req, "pid", pid);
-        xpc_dictionary_set_uint64(req, "start", start);
-        xpc_dictionary_set_uint64(req, "len", len);
+        xpc_dictionary_set_string(req, "path", pathbuf);
         assure(!xpc_pipe_routine(gJBDPipe, req, &rsp));
         err = (int)xpc_dictionary_get_uint64(rsp, "status");
     error:
@@ -1111,6 +1110,9 @@ error:
     return err;
 }
     
+
+    
+    
 int my_posix_spawn_internal(pid_t *pid, const char *path, void *adesc, char **argv, char **envp) {
     int ret = 0;
     char **out = NULL;
@@ -1183,7 +1185,7 @@ __attribute__((constructor))  int constructor(){
     
     debug("hello");
     
-        //remove injected env vars
+    //remove injected env vars
     unsetenv(INJECT_KEY2);
     char *dyldvar = getenv(INJECT_KEY);
     if (dyldvar) {
@@ -1264,6 +1266,7 @@ __attribute__((constructor))  int constructor(){
             sbtoken("/private/var/stash", 0);
             
 //            if (access("/usr/lib/oldabi.dylib", F_OK)){
+            /*
             debug("dlopen oldabi");
             void *h = dlopen("/usr/lib/oldabi.dylib", RTLD_NOW);
             debug("dlopened oldabi");
@@ -1271,7 +1274,14 @@ __attribute__((constructor))  int constructor(){
                 debug("oldabi dlopen failed: %s\n", dlerror());
             else
                 debug("oldabi ok");
+             */
 //            }
+            struct stat sb;
+            if(stat(pathbuf, &sb) == 0) {
+                if (S_ISREG(sb.st_mode) && (sb.st_mode & (S_ISUID | S_ISGID))) {
+                    fix_setuid(getpid(), pathbuf);
+                }
+            }
             
             debug("Will dlopen...\n");
             void *hndl = dlopen("/usr/lib/TweakInject.dylib", RTLD_NOW);
