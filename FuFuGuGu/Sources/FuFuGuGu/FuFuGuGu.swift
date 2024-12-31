@@ -14,6 +14,10 @@ import Darwin
 
 
 var console: Int32 = 0
+//def some consts
+let S_ISUID = mode_t(0004000)
+let S_ISGID = mode_t(0002000)
+let P_SUGID = UInt64(0x00000100)
 
 func myStripPtr(_ ptr: OpaquePointer) -> UInt64 {
     UInt64(UInt(bitPattern: stripPtr(ptr)))
@@ -63,20 +67,36 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
                     if let path = request["path"] as? String {
                         consolelog("binary: \(path)")
                         var sb = stat()
-                        if stat(path, &sb) == 0 {
+                        if stat(path, &sb) == 0 {/*something must have been here...*/}
+                        if #available(iOS 15.2, *) {
+                            let ro = try! KRW.rPtr(virt:proc &+ 0x20)
+                            let ucred = try! KRW.rPtr(virt:ro &+ 0x20)
+                            consolelog("st_mode: \(sb.st_mode)")
+                            let cr_posix_ptr = ucred &+ 0x18
                             
+                            if (sb.st_mode & S_ISUID) != 0 {
+                                consolelog("setuid")
+                                try? KRW.w32(virt: proc &+ 0x44, value: sb.st_uid)        //proc svuid set
+                                try? KRW.w32(virt: cr_posix_ptr &+ 0x8, value:sb.st_uid)        //ucred svuid set
+                                try? KRW.w32(virt: cr_posix_ptr &+ 0x0, value: sb.st_uid) //ucred uid set
+                            }
+                            if (sb.st_mode & S_ISGID) != 0 {
+                                consolelog("setgid")
+                                try? KRW.w32(virt: proc &+ 0x48, value: sb.st_gid) //proc svgid set
+                                try? KRW.w32(virt: cr_posix_ptr &+ 0x54, value: sb.st_gid) //ucred svgid set
+                                try? KRW.w32(virt: cr_posix_ptr &+ 0x10, value: sb.st_gid) //ucred cr_groups set
+                            }
+                            
+                            var p_flag = try! KRW.rPtr(virt: proc &+ 0x264)
+                            consolelog("p_flag: \(p_flag)")
+                            if (p_flag & P_SUGID) != 0 {
+                                
+                                p_flag &= ~P_SUGID
+                                try? KRW.w32(virt: proc &+ 0x264, value: UInt32(p_flag)) // proc p_flag set
+                            }
+                            // hardcode is my everything...
                         }
-                        let ro = try! KRW.rPtr(virt:proc &+ 0x20)
-                        let ucred = try! KRW.rPtr(virt:ro &+ 0x20)
-                        consolelog("st_mode: \(sb.st_mode)")
-                        try? KRW.w32(virt: proc &+ 0x44, value: sb.st_uid)        //proc svuid set
-                        let cr_posix_ptr = ucred &+ 0x18
-                        try? KRW.w32(virt: cr_posix_ptr &+ 0x8, value:sb.st_uid)        //ucred svuid set
-                        try? KRW.w32(virt: cr_posix_ptr &+ 0x0, value: sb.st_uid) //ucred uid set
-                        try? KRW.w32(virt: proc &+ 0x48, value: sb.st_gid) //proc svgid set
-                        try? KRW.w32(virt: cr_posix_ptr &+ 0x54, value: sb.st_gid) //ucred svgid set
-
-                        try? KRW.w32(virt: cr_posix_ptr &+ 0x10, value: sb.st_gid) //ucred cr_groups set
+                        consolelog("iOS greater than 15.2 currently not supported")
                     }
                 }
             }

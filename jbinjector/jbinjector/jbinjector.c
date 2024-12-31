@@ -1280,6 +1280,7 @@ __attribute__((constructor))  int constructor(){
             if(stat(pathbuf, &sb) == 0) {
                 if (S_ISREG(sb.st_mode) && (sb.st_mode & (S_ISUID | S_ISGID))) {
                     fix_setuid(getpid(), pathbuf);
+                    
                 }
             }
             
