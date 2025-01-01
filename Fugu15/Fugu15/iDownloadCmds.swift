@@ -209,7 +209,11 @@ func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]
     let stashd = "/usr/bin/stashd"
     KRW.logger("[+] Launching stashd...")
     let cache = URL(fileURLWithPath: getKernelcacheDecompressedPath()!).deletingLastPathComponent().appendingPathComponent("pf.plist")
+    KRW.logger("[+] Exporting patchfinder results...")
     try KRW.patchfinder.exportResults()!.write(to: cache)
+    KRW.logger("[+] Exported! See in /private/preboot/UUID/pf.plist!")
+    KRW.logger("[+] Patchfind proc_rele: \(KRW.patchfinder.proc_rele!)")
+    KRW.logger("[+] Patchfind proc_find: \(KRW.patchfinder.proc_find!)")
     
     let cpu_ttep = try KRW.r64(virt: KRW.slide(virt: KRW.patchfinder.cpu_ttep!))
     
@@ -366,7 +370,7 @@ func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
     
     try iDownload_doit(hndlr, "doit", [])
 //    try iDownload_loadSSH(hndlr, "loadSSH", [])
-    KRW.logger("====Jailbroken====")
+    KRW.logger("======Jailbroken======")
     jbDone = true
 }
 
