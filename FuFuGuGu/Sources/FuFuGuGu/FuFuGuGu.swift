@@ -52,35 +52,31 @@ func consolelog(_ str: String) {
  */
 
 func fix_setuid(request: XPCDict) -> UInt64 {
-    consolelog("fix_setuid")
+//    consolelog("fix_setuid")
     guard let pid = request["pid"] as? UInt64 else {return 1}
-    consolelog("pid: \(pid)")
+//    consolelog("pid: \(pid)")
     guard let proc = try? Proc(pid: pid_t(pid))?.address as? UInt64 else {return 2}
-    consolelog("proc: \(proc)")
+//    consolelog("proc: \(proc)")
     guard let path = request["path"] as? String else {return 3}
-    consolelog("binary: \(path)")
+//    consolelog("binary: \(path)")
     var sb = stat()
     if stat(path, &sb) == 0 {/*something must have been here...*/}
     if #available(iOS 15.2, *) {
         let ro = try! KRW.rPtr(virt:proc &+ 0x20)
         let ucred = try! KRW.rPtr(virt:ro &+ 0x20)
-        consolelog("st_mode: \(sb.st_mode)")
         let cr_posix_ptr = ucred &+ 0x18
         
         if (sb.st_mode & S_ISUID) != 0 {
-            consolelog("setuid")
             try? KRW.w32(virt: proc &+ 0x44, value: sb.st_uid)        //proc svuid set
             try? KRW.w32(virt: cr_posix_ptr &+ 0x8, value:sb.st_uid)  //ucred svuid set
             try? KRW.w32(virt: cr_posix_ptr &+ 0x0, value: sb.st_uid) //ucred uid set
         }
         if (sb.st_mode & S_ISGID) != 0 {
-            consolelog("setgid")
             try? KRW.w32(virt: proc &+ 0x48, value: sb.st_gid)         //proc svgid set
             try? KRW.w32(virt: cr_posix_ptr &+ 0x54, value: sb.st_gid) //ucred svgid set
             try? KRW.w32(virt: cr_posix_ptr &+ 0x10, value: sb.st_gid) //ucred cr_groups set
         }
         var p_flag = try! KRW.rPtr(virt: proc &+ 0x264)
-        consolelog("p_flag: \(p_flag)")
         if (p_flag & P_SUGID) != 0 {
             p_flag &= ~P_SUGID
             try? KRW.w32(virt: proc &+ 0x264, value: UInt32(p_flag)) //proc p_flag set
@@ -123,7 +119,8 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
             if let pid = request["pid"] as? UInt64 {
                 if let proc = try? Proc(pid: pid_t(pid)) {
                     if let flags = proc.cs_flags {
-                        proc.cs_flags = (flags & ~0x703b10) | 0x10000024
+                        
+                        proc.cs_flags = (flags & ~0x703b10) | 0x10000024 //0x2400002D
                         
                         guard let pmap = proc.task?.vmMap?.pmap else {
                             return 4
