@@ -269,7 +269,61 @@ func fixprot(request: XPCDict) -> UInt64 {
         
         cur = cur.unsafelyUnwrapped.next
     }
-    
+    return 0
+}
+
+func sbtoken(request: XPCDict, reply: XPCDict) -> UInt64 {
+    guard let path = request["path"] as? String else {return 1}
+    let writeI = (request["rw"] as? UInt64) ?? 0
+    let write  = writeI != 0
+    let action = write ? APP_SANDBOX_READ_WRITE : APP_SANDBOX_READ
+    if let token  = sandbox_extension_issue_file(action, path, 0, 0) {
+        defer { free(token) }
+        
+        var sz = malloc_size(token)
+        if sz == 0 {
+            sz = 0x40
+        }
+        
+        reply["token"] = Data(bytes: token, count: sz)
+        return 0
+    } else {
+        return 2
+    }
+}
+
+func fixpermanent(request: XPCDict) -> UInt64 {
+    guard let pid = request["pid"] as? UInt64 else {return 1}
+    guard let start = request["start"] as? UInt64 else {return 2}
+    guard let len = request["len"] as? UInt64 else {return 3}
+    let end = start + len
+    guard let proc = try? Proc(pid: pid_t(pid)) else {return 4}
+    guard let links = proc.task?.vmMap?.links else {return 5}
+
+    let map = links.address
+    var cur = links.next
+    while cur != nil && cur.unsafelyUnwrapped.address != map {
+        guard let eStart = cur.unsafelyUnwrapped.start else {
+            return 5
+        }
+        
+        guard let eEnd = cur.unsafelyUnwrapped.start else {
+            return 6
+        }
+        
+        guard start <= eEnd && end >= eStart else {
+            cur = cur.unsafelyUnwrapped.next
+            continue
+        }
+        
+        guard let bits = cur.unsafelyUnwrapped.bits else {
+            return 7
+        }
+        
+        cur.unsafelyUnwrapped.bits = bits & ~(1 << 19)
+        
+        cur = cur.unsafelyUnwrapped.next
+    }
     return 0
 }
 
@@ -293,26 +347,7 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
             return fixprot(request: request)
             
         case "sbtoken":
-            if let path = request["path"] as? String {
-                let writeI = (request["rw"] as? UInt64) ?? 0
-                let write  = writeI != 0
-                let action = write ? APP_SANDBOX_READ_WRITE : APP_SANDBOX_READ
-                if let token  = sandbox_extension_issue_file(action, path, 0, 0) {
-                    defer { free(token) }
-                    
-                    var sz = malloc_size(token)
-                    if sz == 0 {
-                        sz = 0x40
-                    }
-                    
-                    reply["token"] = Data(bytes: token, count: sz)
-                    return 0
-                } else {
-                    return 2
-                }
-            } else {
-                return 1
-            }
+            return sbtoken(request: request, reply: reply)
             
         case "fixpermanent":
             if let pid = request["pid"] as? UInt64 {
