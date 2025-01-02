@@ -17,6 +17,7 @@ public enum KRWError: Error {
     case patchfinderFailed(symbol: String)
     case failedToTranslate(address: UInt64, table: String, entry: UInt64)
     case failedToGetKObject(ofPort: mach_port_t)
+    case failedToGetOurProc
 }
 
 public enum KRWExploit {

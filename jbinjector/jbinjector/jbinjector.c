@@ -1031,7 +1031,9 @@ int my_csops(pid_t pid, unsigned int ops, void * useraddr, size_t usersize){
     if (realOps){
         if (pid == getpid() || pid == 0){
             if (retval == 0 && ops == 0 && usersize >=  sizeof(int) && useraddr){
-                *(int*)useraddr = (realOps & ~(CS_DEBUGGED | CS_GET_TASK_ALLOW)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT);
+//                debug("csops useraddr");
+                *(int*)useraddr = (realOps & ~(/*CS_DEBUGGED | CS_GET_TASK_ALLOW*/CS_PLATFORM_BINARY | CS_KILLED)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_VALID | CS_SIGNED);
+                debug("csops useraddr %i", useraddr);
             }
         }
     }
@@ -1068,7 +1070,7 @@ int hookFork(void){
 #endif
     err = hookAddr(hooktgt, my_fork_internal);
 error:
-    debug("hookfrok err=%d\n",err);
+    debug("hookfork err=%d\n",err);
     return err;
 }
     

@@ -150,8 +150,8 @@ struct JailbreakView: View {
                     }
                 }
             }
-            
             try testkrwstuff()
+            
             
             try iDownload.launch_iDownload(krw: KRW(), otherCmds: iDownloadCmds)
             
