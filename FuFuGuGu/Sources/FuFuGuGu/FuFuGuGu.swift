@@ -119,9 +119,9 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
             if let pid = request["pid"] as? UInt64 {
                 if let proc = try? Proc(pid: pid_t(pid)) {
                     if let flags = proc.cs_flags {
-                        
-                        proc.cs_flags = (flags & ~0x703b10) | 0x10000024 //0x2400002D
-                        
+                        consolelog("flags: \(flags)")
+                        proc.cs_flags = (flags & ~0x703b10) | 0x3400002d//0x10000024 0x3400002d
+                        consolelog("flags_new: \(proc.cs_flags)")
                         guard let pmap = proc.task?.vmMap?.pmap else {
                             return 4
                         }

@@ -1002,6 +1002,11 @@ int csops(pid_t pid, unsigned int  ops, void * useraddr, size_t usersize);
     #define CS_REQUIRE_LV             0x0002000    /* require library validation */
     #define CS_ENTITLEMENTS_VALIDATED 0x0004000    /* code signature permits restricted entitlements */
     #define CS_NVRAM_UNRESTRICTED     0x0008000    /* has com.apple.rootless.restricted-nvram-variables.heritable entitlement */
+    
+    #define CS_RUNTIME                0x00010000   /* Apply hardened runtime policies */
+    #define CS_LINKER_SIGNED          0x00020000   /* Automatically signed by the linker */
+    
+    
 
     #define CS_ALLOWED_MACHO             (CS_ADHOC | CS_HARD | CS_KILL | CS_CHECK_EXPIRATION | \
                                           CS_RESTRICT | CS_ENFORCEMENT | CS_REQUIRE_LV)
