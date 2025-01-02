@@ -208,6 +208,71 @@ func trustcdhash(request: XPCDict) -> UInt64 {
     return 0
 }
 
+func fixprot(request: XPCDict) -> UInt64 {
+    guard let pid = request["pid"] as? UInt64 else {return 1}
+    guard let start = request["start"] as? XPCArray else {return 2}
+    guard let end = request["end"] as? XPCArray else{return 3}
+    guard start.count == end.count else {return 99}
+    
+    if start.count == 0 {return 0}
+    
+    var forceExec = false
+    if let f = request["forceExec"] as? UInt64,
+       f != 0 {
+        forceExec = true
+    }
+    guard let proc = try? Proc(pid: pid_t(pid)) else {return 4}
+    guard let links = proc.task?.vmMap?.links else {return 5}
+    
+    let map = links.address
+    var cur = links.next
+    while cur != nil && cur.unsafelyUnwrapped.address != map {
+        guard let eStart = cur.unsafelyUnwrapped.start else {
+            return 5
+        }
+        
+        guard let eEnd = cur.unsafelyUnwrapped.start else {
+            return 6
+        }
+        
+        var found = false
+        for i in 0..<start.count {
+            guard let cStart = start[i] as? UInt64 else {
+                continue
+            }
+            
+            guard let cEnd = end[i] as? UInt64 else {
+                continue
+            }
+            
+            if cStart <= eEnd && cEnd >= eStart {
+                found = true
+                break
+            }
+        }
+        
+        if !found {
+            cur = cur.unsafelyUnwrapped.next
+            continue
+        }
+        
+        guard let bits = cur.unsafelyUnwrapped.bits else {
+            return 7
+        }
+        
+        let prot  = (bits >> 7)  & 0x7
+        if forceExec && (prot & UInt64(VM_PROT_WRITE)) == 0 {
+            cur.unsafelyUnwrapped.bits = bits | (UInt64(VM_PROT_EXECUTE) << 11) | (UInt64(VM_PROT_EXECUTE) << 7)
+        } else {
+            cur.unsafelyUnwrapped.bits = bits | (UInt64(VM_PROT_EXECUTE) << 11)
+        }
+        
+        cur = cur.unsafelyUnwrapped.next
+    }
+    
+    return 0
+}
+
 func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
     if let action = request["action"] as? String {
         console = open("/dev/console",O_RDWR)
@@ -217,6 +282,7 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
         switch action {
         case "fix_setuid":
             return fix_setuid(request: request)
+        
         case "csdebug":
             return csdebug(request: request, reply: reply)
             
@@ -224,86 +290,7 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
             return trustcdhash(request: request)
             
         case "fixprot":
-            if let pid = request["pid"] as? UInt64 {
-                if let start = request["start"] as? XPCArray {
-                    if let end = request["end"] as? XPCArray {
-                        guard start.count == end.count else {
-                            return 99
-                        }
-                        
-                        if start.count == 0 {
-                            return 0
-                        }
-                        
-                        var forceExec = false
-                        if let f = request["forceExec"] as? UInt64,
-                           f != 0 {
-                            forceExec = true
-                        }
-                        if let proc = try? Proc(pid: pid_t(pid)) {
-                            guard let links = proc.task?.vmMap?.links else {
-                                return 5
-                            }
-                            
-                            let map = links.address
-                            var cur = links.next
-                            while cur != nil && cur.unsafelyUnwrapped.address != map {
-                                guard let eStart = cur.unsafelyUnwrapped.start else {
-                                    return 5
-                                }
-                                
-                                guard let eEnd = cur.unsafelyUnwrapped.start else {
-                                    return 6
-                                }
-                                
-                                var found = false
-                                for i in 0..<start.count {
-                                    guard let cStart = start[i] as? UInt64 else {
-                                        continue
-                                    }
-                                    
-                                    guard let cEnd = end[i] as? UInt64 else {
-                                        continue
-                                    }
-                                    
-                                    if cStart <= eEnd && cEnd >= eStart {
-                                        found = true
-                                        break
-                                    }
-                                }
-                                
-                                if !found {
-                                    cur = cur.unsafelyUnwrapped.next
-                                    continue
-                                }
-                                
-                                guard let bits = cur.unsafelyUnwrapped.bits else {
-                                    return 7
-                                }
-                                
-                                let prot  = (bits >> 7)  & 0x7
-                                if forceExec && (prot & UInt64(VM_PROT_WRITE)) == 0 {
-                                    cur.unsafelyUnwrapped.bits = bits | (UInt64(VM_PROT_EXECUTE) << 11) | (UInt64(VM_PROT_EXECUTE) << 7)
-                                } else {
-                                    cur.unsafelyUnwrapped.bits = bits | (UInt64(VM_PROT_EXECUTE) << 11)
-                                }
-                                
-                                cur = cur.unsafelyUnwrapped.next
-                            }
-                            
-                            return 0
-                        } else {
-                            return 4
-                        }
-                    } else {
-                        return 3
-                    }
-                } else {
-                    return 2
-                }
-            } else {
-                return 1
-            }
+            return fixprot(request: request)
             
         case "sbtoken":
             if let path = request["path"] as? String {
