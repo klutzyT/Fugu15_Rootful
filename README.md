@@ -6,8 +6,8 @@ Special thanks to [tihmstar](https://twitter.com/tihmstar) for helping to turn F
 # Current state
 + Fixed "TC" problem. 
 [here](https://ghh-jb.github.io/repo/fugu.jpg) you can see. 
-- Need to find kernel offsets of jop_disabled bit. oldabi is a solution for now.
-
++ Found kernel offsets of jop_disabled bit.
+- Offsets are hardcoded - find then if any of provided doen not work.
 
 # WARNING - ONLY FOR DEVELOPERS
 No support will be provided for this version of Fugu15. Feel free to fix it if you want to, but note that no pull requests will be accepted as I'm done with jailbreaking.  

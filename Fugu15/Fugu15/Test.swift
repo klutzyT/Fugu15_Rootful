@@ -11,7 +11,9 @@ import KernelPatchfinder
 import KRW
 import IOSurface
 
+
 let pf = KernelPatchfinder.running!
+
 
 func getSurfacePort(magic: UInt64 = 1337) throws -> mach_port_t {
     let surf = IOSurfaceCreate([
@@ -38,20 +40,15 @@ var realUcred: UInt64?
 
 func testkrwstuff() throws {
     let port = try getSurfacePort()
-    
     KRW.logger("[+] Port: \(port)")
-    var kobject = UInt64(0)
-    //my wierd attemt to fix app crashes
-    for _ in 0..<20{
-        guard let virt = try? KRW.ourProc?.task!.getKObject(ofPort: port) else {
-            KRW.logger("[-] OurProc is nil -> continue run")
-            continue
-        }
-        kobject = virt
-        KRW.logger("[+] Got ourProc of port \(kobject)")
-        break
+    
+
+    guard let virt = try? KRW.ourProc?.task!.getKObject(ofPort: port) else {
+        KRW.logger("[-] Failed to get our proc - close app and try again in 15 seconds")
+        throw KRWError.failedToGetOurProc
     }
-    let surface = try KRW.rPtr(virt: kobject + 0x18/* IOSurfaceSendRight->IOSurface */)
+    KRW.logger("[+] Got ourProc of port \(virt)")
+    let surface = try KRW.rPtr(virt: virt + 0x18/* IOSurfaceSendRight->IOSurface */)
     
     let surfaceBase = surface & ~0x3FFF
     let surfaceOff  = surface & 0x3FFF

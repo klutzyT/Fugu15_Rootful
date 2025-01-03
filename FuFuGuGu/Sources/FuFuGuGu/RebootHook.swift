@@ -100,7 +100,9 @@ public func swift_reboot_hook(_ consoleFD: Int32) {
         }
         
         _ = pipe.send(message: ["action": "pacBypass2Stashd"])
-        
+        log("pacBypass2Stashd")
+        unmount("/Developer", MNT_FORCE) // Debug2work
+        log("Fixed Xcode debugger")
         log("Stashed primitives, we're ready to reboot!")
     } catch let e {
         log("Uh-Oh! An exception occcured: \(e)")

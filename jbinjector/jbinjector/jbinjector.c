@@ -1002,6 +1002,11 @@ int csops(pid_t pid, unsigned int  ops, void * useraddr, size_t usersize);
     #define CS_REQUIRE_LV             0x0002000    /* require library validation */
     #define CS_ENTITLEMENTS_VALIDATED 0x0004000    /* code signature permits restricted entitlements */
     #define CS_NVRAM_UNRESTRICTED     0x0008000    /* has com.apple.rootless.restricted-nvram-variables.heritable entitlement */
+    
+    #define CS_RUNTIME                0x00010000   /* Apply hardened runtime policies */
+    #define CS_LINKER_SIGNED          0x00020000   /* Automatically signed by the linker */
+    
+    
 
     #define CS_ALLOWED_MACHO             (CS_ADHOC | CS_HARD | CS_KILL | CS_CHECK_EXPIRATION | \
                                           CS_RESTRICT | CS_ENFORCEMENT | CS_REQUIRE_LV)
@@ -1026,7 +1031,9 @@ int my_csops(pid_t pid, unsigned int ops, void * useraddr, size_t usersize){
     if (realOps){
         if (pid == getpid() || pid == 0){
             if (retval == 0 && ops == 0 && usersize >=  sizeof(int) && useraddr){
-                *(int*)useraddr = (realOps & ~(CS_DEBUGGED | CS_GET_TASK_ALLOW)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT);
+//                debug("csops useraddr");
+                *(int*)useraddr = (realOps & ~(/*CS_DEBUGGED | CS_GET_TASK_ALLOW*/CS_PLATFORM_BINARY | CS_KILLED)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_VALID | CS_SIGNED);
+                debug("csops useraddr %i", useraddr);
             }
         }
     }
@@ -1063,7 +1070,7 @@ int hookFork(void){
 #endif
     err = hookAddr(hooktgt, my_fork_internal);
 error:
-    debug("hookfrok err=%d\n",err);
+    debug("hookfork err=%d\n",err);
     return err;
 }
     
