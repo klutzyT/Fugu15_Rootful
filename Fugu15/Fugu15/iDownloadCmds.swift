@@ -189,7 +189,6 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     _ = f("/usr/bin/apt")
     _ = f("/usr/bin/uicache")
     _ = f("/Applications/Cydia.app/Cydia")
-    _ = f("/usr/libexec/cydia/cydo")
     KRW.logger("[+] jbinjector dlopened and running ok!")
     
     unsetenv("JBINJECTOR_NO_MEMPATCH")
@@ -368,6 +367,7 @@ func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
     
     _ = try? FileManager.default.createDirectory(atPath: "/private/var/mnt", withIntermediateDirectories: true)
     
+    try iDownload_doit(hndlr, "doit", [])
 //    try iDownload_loadSSH(hndlr, "loadSSH", [])
     KRW.logger("======Jailbroken======")
     jbDone = true
