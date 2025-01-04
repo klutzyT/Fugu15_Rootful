@@ -142,7 +142,7 @@ struct JailbreakView: View {
             KRW.logger = { msg in
                 if status != .done {
                     DispatchQueue.main.async {
-                        if msg.hasPrefix("Status: ") {
+                        if msg.hasPrefix("[#] Status: ") {
                             statusUpdate(msg)
                         }
                         
@@ -150,6 +150,14 @@ struct JailbreakView: View {
                     }
                 }
             }
+            
+            if access("/Library/.installed_Fugu15_Rootful", F_OK) == 0{
+                KRW.logger("[#] Status: Already jailbroken!")
+                status = .done
+                jbDone = true
+                return
+            }
+                    
             try testkrwstuff()
             
             
@@ -161,7 +169,7 @@ struct JailbreakView: View {
                 }
                 
                 DispatchQueue.main.async {
-                    statusUpdate("Status: Done!")
+                    statusUpdate("[#] Status: Done!")
                     status = .done
                     showSuccessMsg = true
                 }

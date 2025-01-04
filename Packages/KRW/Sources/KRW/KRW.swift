@@ -75,7 +75,7 @@ public class KRW {
             return
         }
         
-        logger("Status: Gaining KRW")
+        logger("[#] Status: Gaining KRW")
         
         if let exploit = exploitToUse {
             switch exploit {

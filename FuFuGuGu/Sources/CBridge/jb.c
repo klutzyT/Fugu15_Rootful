@@ -83,7 +83,6 @@ const char* xpcproxy_blacklist[] = {
     "MessagesBlastDoorService",
     "IDSBlastDoorService",
     "GSSCred",
-    "com.apple.WebKit.WebContent",
     NULL
 };
 

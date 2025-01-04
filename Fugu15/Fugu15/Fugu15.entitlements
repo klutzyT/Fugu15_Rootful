@@ -2,11 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>com.apple.security.exception.files.absolute-path.read-write</key>
+    <array>
+        <string>/</string>
+    </array>
+    <key>platform-application</key>
+    <true/>
 	<key>com.apple.security.get-task-allow</key>
 	<true/>
 	<key>get-task-allow</key>
-	<true/>
-	<key>platform-application</key>
 	<true/>
 	<key>task_for_pid-allow</key>
 	<true/>
@@ -14,6 +18,8 @@
 	<true/>
 	<key>proc_info-allow</key>
 	<true/>
+	<key>com.apple.private.security.system-mount-authority</key>
+    <true/>
 	<key>com.apple.private.persona-mgmt</key>
 	<true/>
 	<key>com.apple.private.tcc.allow</key>
@@ -22,6 +28,12 @@
 	</array>
 	<key>com.apple.private.security.no-container</key>
 	<true/>
+	<key>com.apple.private.amfi.can-allow-non-platform</key>
+    <true/>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>apple</string>
+    </array>
 	<key>com.apple.private.security.storage-exempt.heritable</key>
 	<true/>
 	<key>com.apple.private.security.storage.AppBundles</key>
@@ -32,12 +44,16 @@
 	<true/>
 	<key>com.apple.springboard.launchapplications</key>
 	<true/>
+	<key>com.apple.backboardd.launchapplications</key>
+    <true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.system-task-ports.control</key>
 	<true/>
 	<key>com.apple.system-task-ports.token.control</key>
 	<true/>
+	<key>com.apple.security.exception.process-info</key>
+    <true/>
 	<key>com.apple.private.mobileinstall.allowedSPI</key>
 	<array>
 		<string>InstallForLaunchServices</string>
@@ -48,6 +64,17 @@
 	</array>
 	<key>com.apple.private.spawn-driver</key>
 	<true/>
+	<key>Outgoing Network Connections</key>
+    <true/>
+    <key>com.apple.CommCenter.fine-grained</key>
+    <array>
+        <string>spi</string>
+        <string>phone</string>
+        <string>identity</string>
+        <string>data-usage</string>
+        <string>data-allowed</string>
+        <string>data-allowed-write</string>
+    </array>
 	<key>com.apple.developer.driverkit</key>
 	<true/>
 	<key>com.apple.developer.driverkit.transport.pci</key>
@@ -72,7 +99,116 @@
 	<true/>
 	<key>com.apple.security.iokit-user-client-class</key>
 	<array>
+		<string>IOSurfaceRootUserClient</string>
 		<string>AppleAPFSUserClient</string>
 	</array>
+	<key>com.apple.security.exception.shared-preference.read-write</key>
+	<array>
+		<string>de.pinauten.Fugu15-Rootful</string>
+	</array>
+	<key>com.apple.private.domain-extension</key>
+    <true/>
+	<key>com.apple.private.xpc.domain-extension</key>
+    <true/>
+    <key>com.apple.private.xpc.domain-extension.proxy</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.app-state-manager</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.enable-disable-system-services</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.event-monitor</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.loginitem-bootstrapper</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.loginitem-outside-bundle</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.obliterator</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.per-user-create.mbsetupuser</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.per-user-lookup</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.reboot</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.service-hold</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.userspace-reboot</key>
+    <true/>
+    <key>com.apple.private.xpc.launchd.userspace-reboot-now</key>
+    <true/>
+    <key>com.apple.private.xpc.persona-creator</key>
+    <true/>
+    <key>com.apple.private.xpc.persona-manager</key>
+    <true/>
+    <key>com.apple.security.exception.iokit-user-client-class</key>
+    <array>
+        <string>AppleMobileFileIntegrityUserClient</string>
+        <string>RootDomainUserClient</string>
+        <string>AppleSMCClient</string>
+        <string>AppleSEPUserClient</string>
+        <string>AppleNVMeEANUC</string>
+        <string>IOAVDeviceUserClient</string>
+        <string>IODPDeviceUserClient</string>
+        <string>AGXCommandQueue</string>
+        <string>AGXDevice</string>
+        <string>AGXDeviceUserClient</string>
+        <string>AGXSharedUserClient</string>
+        <string>IOAccelContext</string>
+        <string>IOAccelContext2</string>
+        <string>IOAccelDevice</string>
+        <string>IOAccelDevice2</string>
+        <string>IOAccelSharedUserClient</string>
+        <string>IOAccelSharedUserClient2</string>
+        <string>IOAccelSubmitter2</string>
+        <string>IOSurfaceRootUserClient</string>
+        <string>AGXGLContext</string>
+        <string>AppleCredentialManagerUserClient</string>
+        <string>AppleHPMUserClient</string>
+        <string>AppleJPEGDriverUserClient</string>
+        <string>AppleUSBHostDeviceUserClient</string>
+        <string>AppleUSBHostInterfaceUserClient</string>
+        <string>H11ANEInDirectPathClient</string>
+        <string>IOAVControllerConcreteUserClient</string>
+        <string>IOHIDEventServiceFastPathUserClient</string>
+        <string>IOHIDLibUserClient</string>
+        <string>IOMobileFramebufferUserClient</string>
+        <string>IOReportUserClient</string>
+        <string>IOSurfaceAcceleratorClient</string>
+        <string>IOTimeSyncClockManagerUserClient</string>
+        <string>IOTimeSyncDomainUserClient</string>
+        <string>IOTimeSyncgPTPManagerUserClient</string>
+        <string>IOUserServer</string>
+        <string>AppleBasebandUserClient</string>
+        <string>AppleBasebandPCIUserClient</string>
+    </array>
+    <key>com.apple.security.exception.mach-lookup.global-name</key>
+    <array>
+        <string>jb-global-jbd</string>
+        <string>jb-global-stashd</string>
+    </array>
+    <key>com.apple.private.MobileContainerManager.allowed</key>
+    <true/>
+    <key>com.apple.multitasking.termination</key>
+    <true/>
+    <key>com.apple.private.security.container-manager</key>
+    <true/>
+    <key>com.apple.private.coreservices.canmaplsdatabase</key>
+    <true/>
+    <key>com.apple.lsapplicationworkspace.rebuildappdatabases</key>
+    <true/>
+    <key>com.apple.private.MobileInstallationHelperService.InstallDaemonOpsEnabled</key>
+    <true/>
+    <key>com.apple.private.MobileInstallationHelperService.allowed</key>
+    <true/>
+    <key>com.apple.private.uninstall.deletion</key>
+    <true/>
+    <key>com.apple.private.memorystatus</key>
+    <true/>
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.de.pinauten.Fugu15-Rootful</string>
+    </array>
+    <key>com.apple.private.kernel.get-kext-info</key>
+    <true/>
 </dict>
 </plist>
