@@ -13,7 +13,9 @@ import KRW
 import KRWC
 import SwiftXPC
 import PatchfinderUtils
+import UIKit
 
+let Ngenerator = UINotificationFeedbackGenerator()
 
 let iDownloadCmds = [
     "help": iDownload_help,
@@ -57,6 +59,7 @@ func iDownload_help(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
 
 func iDownload_loadSSH(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) throws {
     KRW.logger("[#] Status: Starting SSH")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
     _ = try hndlr.exec("launchctl", args: ["load", "/Library/LaunchDaemons/com.openssh.sshd.plist"])
 }
 
@@ -163,6 +166,8 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     }
     KRW.logger("[+] Dyld patched, rootfs prepared!")
     KRW.logger("[#] Status: Extracting JB Data")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    
     let FuFuGuGu = Bundle.main.bundleURL.appendingPathComponent("libFuFuGuGu.dylib").path
     let jbinjector = Bundle.main.bundleURL.appendingPathComponent("jbinjector.dylib").path
     let stashd = Bundle.main.bundleURL.appendingPathComponent("stashd").path
@@ -191,6 +196,8 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     }
     
     KRW.logger("[#] Status: Injecting into launchd")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    
     KRW.logger("[+] Launching stashd...")
     try iDownload_stashd(hndlr, "stashd", [])
     _ = try hndlr.exec("/usr/bin/inject_criticald", args: ["1", "/usr/lib/libFuFuGuGu.dylib"])
@@ -199,8 +206,10 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     
     if access(documentsDirectory.appendingPathComponent(".tweaks_disabled").path, F_OK) == 0 {
         renameFile(atPath: "/usr/lib/TweakInject.dylib", toNewName: "TweakInject.disabled")
+        KRW.logger("[+] Tweaks disabled!")
     } else {
         renameFile(atPath: "/usr/lib/TweakInject.disabled", toNewName: "TweakInject.dylib")
+        KRW.logger("[+] Tweaks enabled!")
     }
     
     let hndl = dlopen("/usr/lib/jbinjector.dylib", RTLD_NOW)
@@ -226,6 +235,7 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     setenv("TERM", "xterm-256color", 1);
     KRW.logger("[+] Env vars set!")
     KRW.logger("[#] Status: Running uicache")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
     _ = try? hndlr.exec("/usr/bin/dash", args: ["-c", "uicache -a"])
     
     try hndlr.sendline("OK")
@@ -403,6 +413,7 @@ func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
     try iDownload_tcload(hndlr, "tcload", [Bundle.main.bundleURL.appendingPathComponent("Fugu15_test.tc").path])
     
     KRW.logger("[#] Status: Preparing FS")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
     _ = try? hndlr.exec("/sbin/mount", args: ["-u", "/private/preboot"])
     
     if access("/private/preboot/jb/TrustCache", F_OK) == 0 {
@@ -414,6 +425,7 @@ func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
     try iDownload_doit(hndlr, "doit", [])
 //    try iDownload_loadSSH(hndlr, "loadSSH", [])
     KRW.logger("======Jailbroken======")
+    Ngenerator.notificationOccurred(.success)
     jbDone = true
 }
 

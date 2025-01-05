@@ -153,6 +153,7 @@ struct JailbreakView: View {
             
             if access("/Library/.installed_Fugu15_Rootful", F_OK) == 0{
                 KRW.logger("[#] Status: Already jailbroken!")
+                Ngenerator.notificationOccurred(.error)
                 status = .done
                 jbDone = true
                 return

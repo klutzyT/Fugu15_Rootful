@@ -8,6 +8,7 @@
 
 import Foundation
 import KRWC
+import UIKit
 
 fileprivate func offsetof<T>(_ path: PartialKeyPath<T>) -> UInt64 {
     UInt64(MemoryLayout.offset(of: path)!)
@@ -22,6 +23,7 @@ public extension KRW {
         }
         
         logger("[#] Status: Patchfinding")
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         
         gOffsets.slide = try kslide()
         gOffsets.allproc = (patchfinder.allproc!)
@@ -53,6 +55,7 @@ public extension KRW {
         gOffsets.PORT_LABEL = patchfinder.PORT_LABEL!
         
         logger("[#] Status: Bypassing PAC")
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         
         gOurTask = ourProc!.task!.address
         
