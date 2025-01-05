@@ -329,7 +329,7 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
             return sbtoken(request: request, reply: reply)
             
         case "fixpermanent":
-            return fixprot(request: request)
+            return fixpermanent(request: request)
 
         default:
             break
