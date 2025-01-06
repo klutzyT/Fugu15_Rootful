@@ -11,6 +11,7 @@ import KRWC
 import KernelPatchfinder
 import iDownload
 import PatchfinderUtils
+import UIKit
 
 public enum KRWError: Error {
     case failed(providerError: Int32)
@@ -75,7 +76,8 @@ public class KRW {
             return
         }
         
-        logger("Status: Gaining KRW")
+        logger("[#] Status: Gaining KRW")
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         
         if let exploit = exploitToUse {
             switch exploit {

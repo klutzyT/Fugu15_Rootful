@@ -12,21 +12,12 @@ import SwiftXPCCBindings
 import SwiftXPC
 import Darwin
 
-
 var console: Int32 = 0
 //def some consts
-
-
 
 let S_ISUID = mode_t(0004000)
 let S_ISGID = mode_t(0002000)
 let P_SUGID = UInt64(0x00000100)
-
-
-
-
-
-
 
 /* code signing attributes of a process */
 let CS_HARD =             UInt32(0x00000100)  /* don't load invalid pages */
@@ -44,12 +35,6 @@ let CS_FORCED_LV =        UInt32(0x00000010)  /* Library Validation required by 
 let CS_INVALID_ALLOWED =  UInt32(0x00000020)  /* (macOS Only) Page invalidation allowed by task port policy */
 let CS_PLATFORM_PATH =    UInt32(0x08000000)  /* platform binary by the fact of path (osx only) */
 let CS_EXEC_INHERIT_SIP = UInt32(0x00800000)  /* set CS_INSTALLER on any exec'ed process */
-
-
-
-
-
-
 
 func myStripPtr(_ ptr: OpaquePointer) -> UInt64 {
     UInt64(UInt(bitPattern: stripPtr(ptr)))
@@ -71,14 +56,8 @@ func consolelog(_ str: String) {
         print("Error writing")
     }
 }
-
-
-
-
  
-
-
-
+/* XPC Server stuff */
 func fix_setuid(request: XPCDict) -> UInt64 {
 //    consolelog("fix_setuid")
     guard let pid = request["pid"] as? UInt64 else {return 1}
@@ -160,8 +139,8 @@ func csdebug(request: XPCDict, reply: XPCDict) -> UInt64 {
         
         //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=//
         /// ATTENTION!!! OFFFSETS ARE HARDCODED FOR iPhone SE 2020 iOS 15.2  |
-        /// If these offsets dont work - try uncommenting ones in structs.swift                        |
-        /// It those dont work either - disassemble iOS kernel                                                 |
+        /// If these offsets does NoT work - try uncommenting ones in structs.swift                        |
+        /// It those does not work either - disassemble iOS kernel                                                 |
         //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=//
         
         pmap.jop_disabled = 1                    //0xC8  [+]   0xC4  [+]   0xC0  [-]
@@ -350,54 +329,8 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
             return sbtoken(request: request, reply: reply)
             
         case "fixpermanent":
-            if let pid = request["pid"] as? UInt64 {
-                if let start = request["start"] as? UInt64 {
-                    if let len = request["len"] as? UInt64 {
-                        let end = start + len
-                        if let proc = try? Proc(pid: pid_t(pid)) {
-                            guard let links = proc.task?.vmMap?.links else {
-                                return 5
-                            }
-                            
-                            let map = links.address
-                            var cur = links.next
-                            while cur != nil && cur.unsafelyUnwrapped.address != map {
-                                guard let eStart = cur.unsafelyUnwrapped.start else {
-                                    return 5
-                                }
-                                
-                                guard let eEnd = cur.unsafelyUnwrapped.start else {
-                                    return 6
-                                }
-                                
-                                guard start <= eEnd && end >= eStart else {
-                                    cur = cur.unsafelyUnwrapped.next
-                                    continue
-                                }
-                                
-                                guard let bits = cur.unsafelyUnwrapped.bits else {
-                                    return 7
-                                }
-                                
-                                cur.unsafelyUnwrapped.bits = bits & ~(1 << 19)
-                                
-                                cur = cur.unsafelyUnwrapped.next
-                            }
-                            
-                            return 0
-                        } else {
-                            return 4
-                        }
-                    } else {
-                        return 3
-                    }
-                } else {
-                    return 2
-                }
-            } else {
-                return 1
-            }
-            
+            return fixpermanent(request: request)
+
         default:
             break
         }

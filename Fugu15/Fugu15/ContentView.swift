@@ -39,6 +39,10 @@ struct ContentView: View {
                         .tabItem {
                             Label("About", systemImage: "info.circle")
                         }
+                    SettingsView()
+                        .tabItem {
+                            Label("Settings", systemImage: "gear")
+                        }
                 }
                     .sheet(isPresented: $showingRemoveFrame) {
                         RemoveFuguInstall(isPresented: $showingRemoveFrame)

@@ -13,6 +13,9 @@ import KRW
 import KRWC
 import SwiftXPC
 import PatchfinderUtils
+import UIKit
+
+let Ngenerator = UINotificationFeedbackGenerator()
 
 let iDownloadCmds = [
     "help": iDownload_help,
@@ -31,6 +34,22 @@ let iDownloadCmds = [
     "loadSSH": iDownload_loadSSH
 ] as [String: iDownloadCmd]
 
+func renameFile(atPath path: String, toNewName newName: String) -> Bool {
+    let fileManager = FileManager.default
+        let fileURL = URL(fileURLWithPath: path)
+    
+    let newFileURL = fileURL.deletingLastPathComponent().appendingPathComponent(newName)
+    
+    do {
+        try fileManager.moveItem(at: fileURL, to: newFileURL)
+        return true
+    } catch {
+        print("Error renaming file: (error.localizedDescription)")
+        return false
+    }
+}
+
+
 func iDownload_help(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) throws {
     try hndlr.sendline("tcload <path to TrustCache>: Load a TrustCache")
     try hndlr.sendline("bootstrap:                   Extract bootstrap.tar to /private/preboot/jb")
@@ -39,7 +58,8 @@ func iDownload_help(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
 }
 
 func iDownload_loadSSH(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) throws {
-    KRW.logger("Status: Starting SSH")
+    KRW.logger("[#] Status: Starting SSH")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
     _ = try hndlr.exec("launchctl", args: ["load", "/Library/LaunchDaemons/com.openssh.sshd.plist"])
 }
 
@@ -145,7 +165,9 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
         try iDownload_rootfs(hndlr, "rootfs", ["/dev/disk0s1s8", "/dev/disk0s1s9", "/dev/disk0s1s10", "/dev/disk0s1s11", "/dev/disk0s1s12", "/dev/disk0s1s13"])
     }
     KRW.logger("[+] Dyld patched, rootfs prepared!")
-    KRW.logger("Status: Extracting JB Data")
+    KRW.logger("[#] Status: Extracting JB Data")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    
     let FuFuGuGu = Bundle.main.bundleURL.appendingPathComponent("libFuFuGuGu.dylib").path
     let jbinjector = Bundle.main.bundleURL.appendingPathComponent("jbinjector.dylib").path
     let stashd = Bundle.main.bundleURL.appendingPathComponent("stashd").path
@@ -173,11 +195,22 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
         _ = chmod("/usr/bin/inject_criticald", 0o755)
     }
     
-    KRW.logger("Status: Injecting into launchd")
+    KRW.logger("[#] Status: Injecting into launchd")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    
+    KRW.logger("[+] Launching stashd...")
     try iDownload_stashd(hndlr, "stashd", [])
     _ = try hndlr.exec("/usr/bin/inject_criticald", args: ["1", "/usr/lib/libFuFuGuGu.dylib"])
     KRW.logger("[+] libFuFuGuGu injected successfully!")
     setenv("JBINJECTOR_NO_MEMPATCH", "1", 1)
+    
+    if access(documentsDirectory.appendingPathComponent(".tweaks_disabled").path, F_OK) == 0 {
+        renameFile(atPath: "/usr/lib/TweakInject.dylib", toNewName: "TweakInject.disabled")
+        KRW.logger("[+] Tweaks disabled!")
+    } else {
+        renameFile(atPath: "/usr/lib/TweakInject.disabled", toNewName: "TweakInject.dylib")
+        KRW.logger("[+] Tweaks enabled!")
+    }
     
     let hndl = dlopen("/usr/lib/jbinjector.dylib", RTLD_NOW)
     typealias ft = @convention(c) (_: UnsafePointer<CChar>) -> Int
@@ -195,10 +228,14 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     
     try hndlr.sendline("trustCDHashesForBinaryPathSimple returned \(res)")
     
+    
+    
     setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/jbinjector.dylib", 1)
     setenv("DYLD_AMFI_FAKE", "0xFF", 1)
+    setenv("TERM", "xterm-256color", 1);
     KRW.logger("[+] Env vars set!")
-    KRW.logger("Status: Running uicache")
+    KRW.logger("[#] Status: Running uicache")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
     _ = try? hndlr.exec("/usr/bin/dash", args: ["-c", "uicache -a"])
     
     try hndlr.sendline("OK")
@@ -215,6 +252,7 @@ func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]
     KRW.logger("[+] Patchfind proc_find: \(KRW.patchfinder.proc_find!)")
     
     let cpu_ttep = try KRW.r64(virt: KRW.slide(virt: KRW.patchfinder.cpu_ttep!))
+    KRW.logger("[+] Got cpu_ttep: \(cpu_ttep)")
     
     let cArgs: [UnsafeMutablePointer<CChar>?] = try [
         strdup(stashd),
@@ -225,26 +263,41 @@ func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]
         strdup(String(cpu_ttep)),     // For easy virt-to-phys
         nil
     ]
-    defer { for arg in cArgs { free(arg) } }
-    
+        
     var fileActions: posix_spawn_file_actions_t?
     posix_spawn_file_actions_init(&fileActions)
+//    KRW.logger("[+] posix_spawn_file_actions_init")
     posix_spawn_file_actions_adddup2(&fileActions, hndlr.socket.fileDescriptor, STDIN_FILENO)
+//    KRW.logger("[+] STDIN_FILENO")
     posix_spawn_file_actions_adddup2(&fileActions, hndlr.socket.fileDescriptor, STDOUT_FILENO)
+//    KRW.logger("[+] STDOUT_FILENO")
     posix_spawn_file_actions_adddup2(&fileActions, hndlr.socket.fileDescriptor, STDERR_FILENO)
+//    KRW.logger("[+] STDERR_FILENO")
+
+    
     
     var attr: posix_spawnattr_t?
     posix_spawnattr_init(&attr)
+//    KRW.logger("[+] posix_spawnattr_init")
     posix_spawnattr_setflags(&attr, Int16(POSIX_SPAWN_START_SUSPENDED))
+//    KRW.logger("[+] setflag")
+    
+    defer { for arg in cArgs { free(arg) } }
+    KRW.logger("[+] Freed arg")
+
     
     var child: pid_t = 0
+    KRW.logger("[+] POSIX_SPAWN stashd!")
     let res = posix_spawn(&child, cArgs[0], &fileActions, &attr, cArgs, environ)
+    
     guard res == 0 else {
+        KRW.logger("Failed to launch jailbreakd: \(res)")
         throw iDownloadError.custom("Failed to launch jailbreakd: \(res)")
     }
     
     guard try KRW.initPPLBypass(inProcess: child) else {
         kill(child, SIGKILL)
+        KRW.logger("Failed to init PPL r/w jailbreakd")
         throw iDownloadError.custom("Failed to init PPL r/w jailbreakd")
     }
     
@@ -255,6 +308,7 @@ func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]
         let kr = bootstrap_look_up(bootstrap_port, "jb-global-stashd", &servicePort)
         guard kr == KERN_SUCCESS else {
             guard kr == 1102 else {
+                KRW.logger("bootstrap_look_up failed: \(kr)")
                 throw KRWError.customError(description: "bootstrap_look_up failed: \(kr)")
             }
             
@@ -358,7 +412,8 @@ func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
     KRW.logger("[+] We are in _autorun_!")
     try iDownload_tcload(hndlr, "tcload", [Bundle.main.bundleURL.appendingPathComponent("Fugu15_test.tc").path])
     
-    KRW.logger("Status: Preparing FS")
+    KRW.logger("[#] Status: Preparing FS")
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
     _ = try? hndlr.exec("/sbin/mount", args: ["-u", "/private/preboot"])
     
     if access("/private/preboot/jb/TrustCache", F_OK) == 0 {
@@ -369,6 +424,7 @@ func iDownload_autorun(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String
     
 //    try iDownload_loadSSH(hndlr, "loadSSH", [])
     KRW.logger("======Jailbroken======")
+    Ngenerator.notificationOccurred(.success)
     jbDone = true
 }
 

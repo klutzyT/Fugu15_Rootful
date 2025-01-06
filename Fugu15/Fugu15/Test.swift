@@ -10,9 +10,11 @@ import Foundation
 import KernelPatchfinder
 import KRW
 import IOSurface
+import SwiftUI
 
 
 let pf = KernelPatchfinder.running!
+
 
 
 func getSurfacePort(magic: UInt64 = 1337) throws -> mach_port_t {
@@ -41,6 +43,11 @@ var realUcred: UInt64?
 func testkrwstuff() throws {
     let port = try getSurfacePort()
     KRW.logger("[+] Port: \(port)")
+    
+        
+//    KRW.logger("Status: \(prefs.$tweaks_enabled)")
+//    @EnvironmentObject var prefs: Settings
+//    KRW.logger("Status: tweaks \(prefs.tweaks_enabled)")
     
 
     guard let virt = try? KRW.ourProc?.task!.getKObject(ofPort: port) else {

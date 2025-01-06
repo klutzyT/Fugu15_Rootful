@@ -20,7 +20,7 @@ public extension KRW {
             return
         }
         
-        logger("Status: Bypassing PPL")
+        logger("[#] Status: Bypassing PPL")
         
         gKernelPmap = kernelProc!.task!.vmMap!.pmap!.address
         

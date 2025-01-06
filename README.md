@@ -7,22 +7,24 @@ Special thanks to [tihmstar](https://twitter.com/tihmstar) for helping to turn F
 + Fixed "TC" problem. 
 [here](https://ghh-jb.github.io/repo/fugu.jpg) you can see. 
 + Found kernel offsets of jop_disabled bit.
-- Offsets are hardcoded - find then if any of provided doen not work.
+- Offsets are hardcoded - find them if any of provided does not work.
 
 # WARNING - ONLY FOR DEVELOPERS
-No support will be provided for this version of Fugu15. Feel free to fix it if you want to, but note that no pull requests will be accepted as I'm done with jailbreaking.  
+No support will be provided for this version of Fugu15. Feel free to fix it if you want to, but note that no pull requests with translations will be accepted.
 
-Attettion!!! This caused bootloop on my friend's phone! Do not istall this unless you really know what tou are doing!
+Attettion!!! This caused bootloop on my friend's phone! Do not install this unless you really know what you are doing!
 
 # Tested Devices and iOS Versions
 - iPhone Xs Max: iOS 15.4.1
 - iPhone 13 Pro: iOS 15.1
+- iPhone SE 2020: iOS 15.2
 
 # Building
 Prerequisites:  
-1. Make sure you have Xcode 14.2 installed
+1. Make sure you have Xcode 14.2 exactly installed
 
 Now you can simply run `make` to build Fugu15 (internet connection required to download dependencies).
+Use CryptexManager from releases
 
 # Installing
 Simply install it via Xcode. Currently doesn't support installation via TrollStore because of some bugs.

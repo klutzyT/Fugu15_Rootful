@@ -135,8 +135,6 @@ const char* xpcproxy_blacklist[] = {
     "BlastDoor",
     "wifid",
     "GSSCred",
-    "com.apple.WebKit.WebContent",
-    "Cydia",                  // --__--
     NULL
 };
 
@@ -1032,7 +1030,7 @@ int my_csops(pid_t pid, unsigned int ops, void * useraddr, size_t usersize){
         if (pid == getpid() || pid == 0){
             if (retval == 0 && ops == 0 && usersize >=  sizeof(int) && useraddr){
 //                debug("csops useraddr");
-                *(int*)useraddr = (realOps & ~(/*CS_DEBUGGED | CS_GET_TASK_ALLOW*/CS_PLATFORM_BINARY | CS_KILLED)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_VALID | CS_SIGNED);
+                *(int*)useraddr = (realOps & ~(/*CS_DEBUGGED | CS_GET_TASK_ALLOW*/CS_PLATFORM_BINARY | CS_DEBUGGED)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_VALID | CS_SIGNED);
                 debug("csops useraddr %i", useraddr);
             }
         }
