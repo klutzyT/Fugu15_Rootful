@@ -232,7 +232,8 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     
     setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/jbinjector.dylib", 1)
     setenv("DYLD_AMFI_FAKE", "0xFF", 1)
-    setenv("TERM", "xterm-256color", 1);
+
+
     KRW.logger("[+] Env vars set!")
     KRW.logger("[#] Status: Running uicache")
     UIImpactFeedbackGenerator(style: .light).impactOccurred()

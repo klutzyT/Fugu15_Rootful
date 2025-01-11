@@ -11,6 +11,19 @@ import SwiftXPC
 import KRW
 
 let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+let vers = ProcessInfo.processInfo.operatingSystemVersion
+
+var defaults: UserDefaults? = nil
+public func defs() -> UserDefaults {
+    if defaults == nil {
+        let defaultsPath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].path + "/Preferences/de.pinauten.Fugu15-Rootful.plist"
+        defaults = UserDefaults.init(suiteName: defaultsPath)
+    }
+    return defaults!
+}
+
+
+
 
 
 func tweaks() -> Bool {
@@ -49,11 +62,13 @@ struct SettingsView: View {
     @State private var enable_tweaks: Bool = tweaks()
     @State private var is_jb: Bool = isjailbroken()
     @State private var showAlert: Bool = false
-
+    @AppStorage("kexploit", store: defs()) var kexploit: String = ""
+    
     
     var body: some View {
         VStack {
             Text("Fugu15 Preferences")
+                .multilineTextAlignment(.leading)
                 .font(.largeTitle)
                 .padding()
             
@@ -77,6 +92,27 @@ struct SettingsView: View {
 
                 }))
             }
+            Text("Kernel exploit").font(.title3).padding()
+            Picker("Kernel exploit", selection: $kexploit) {
+                Text("weightBufs")
+                    .foregroundColor(.white)
+                    .tag("weightBufs")
+                
+                var tfp0: mach_port_t = 0
+                if task_for_pid(mach_task_self_, 0, &tfp0) == KERN_SUCCESS {
+                    Text("tfp0")
+                        .foregroundColor(.white)
+                        .tag("tfp0")
+                }
+                if vers.majorVersion >= 15 && vers.minorVersion < 2 {
+                    Text("mcbc")
+                        .foregroundColor(.white)
+                        .tag("mcbc")
+                }
+            }
+            .pickerStyle(.segmented)
+            .colorMultiply(.white)
+            .padding()
         }
         
         .padding()

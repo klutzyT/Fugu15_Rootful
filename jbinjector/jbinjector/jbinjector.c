@@ -135,6 +135,7 @@ const char* xpcproxy_blacklist[] = {
     "BlastDoor",
     "wifid",
     "GSSCred",
+    "sharingd",
     NULL
 };
 
