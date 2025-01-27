@@ -43,6 +43,9 @@ public class KernelObject {
     public func w64PPL(offset: UInt64, value: UInt64) throws {
         try KRW.pplwrite(virt: self.address + offset, data: Data(fromObject: value))
     }
+    public func w32PPL(offset: UInt64, value: UInt32) throws {
+        try KRW.pplwrite(virt: self.address &+ offset, data: Data(fromObject: value))
+    }
 }
 
 public class Proc: KernelObject {
@@ -54,7 +57,7 @@ public class Proc: KernelObject {
         var curProc = try KRW.slide(virt: allproc)
         while curProc != 0 {
             if try KRW.rPtr(virt: curProc + 0x8) != 0 {
-                if try KRW.r32(virt: curProc + 0x68 /* PROC_PID */) == pid {
+                if try KRW.r32(virt: curProc + 0x68 /* PROC_PID_OFFSET */) == pid {
                     self.init(address: curProc)
                     return
                 }
@@ -118,6 +121,28 @@ public class Proc: KernelObject {
             try? w64(offset: 0xD8, value: signed)
         }
     }
+    public var cs_flags: UInt32? {
+        get {
+            if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >= 2 {
+                return ro?.cs_flags
+            }
+            
+            return try? r32(offset: 0x300)
+        }
+        
+        set {
+            guard let newValue = newValue else {
+                return
+            }
+            
+            if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >= 2 {
+                ro?.cs_flags = newValue
+                return
+            }
+            
+            try? w32PPL(offset: 0x300, value: newValue)
+        }
+    }
 }
 
 public class Proc_RO: KernelObject {
@@ -132,6 +157,19 @@ public class Proc_RO: KernelObject {
             }
             
             try? w64PPL(offset: 0x20, value: new)
+        }
+    }
+    public var cs_flags: UInt32? {
+        get {
+            try? r32(offset: 0x1C)
+        }
+        
+        set {
+            guard let new = newValue else {
+                return
+            }
+            
+            try? w32PPL(offset: 0x1C, value: new)
         }
     }
 }

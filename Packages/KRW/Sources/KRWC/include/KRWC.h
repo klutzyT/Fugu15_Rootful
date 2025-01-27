@@ -31,6 +31,13 @@ int krw_kwrite_weightBufs(uintptr_t kernDst, const void * _Nonnull src, size_t s
 uintptr_t krw_kbase_weightBufs(void);
 int krw_cleanup_weightBufs(void);
 
+// kfd
+int krw_init_kfd(uint64_t method);
+int krw_kread_kfd(uintptr_t kernSrc, void * _Nonnull dst, size_t size);
+int krw_kwrite_kfd(uintptr_t kernDst, const void * _Nonnull src, size_t size);
+uintptr_t krw_kbase_kfd(void);
+int krw_cleanup_kfd(void);
+
 // mcbc
 int krw_init_mcbc(void);
 int krw_kread_mcbc(uintptr_t kernSrc, void * _Nonnull dst, size_t size);

@@ -11,11 +11,16 @@
 
 #include <string.h>
 #include <stdbool.h>
+//#include "libkfd/krkw/kread/kread_IOSurface.h"
+#include "libkfd/libkfd.h"
+#include "libkfd/info.h"
 
 // Stuff needed for badRecovery/tlbFail
 KernelOffsetInfo gOffsets;
 uint64_t gOurTask;
 uint64_t gKernelPmap;
+
+uint64_t _kfd = 0;
 
 // tfp0
 mach_port_t tfp0KernPort = 0;
@@ -36,6 +41,20 @@ extern void mcbc_kwrite64(void *, uint64_t val);
 extern void exploitation_cleanup(void);
 extern uintptr_t kernel_base;
 
+// kfd
+uint64_t kfd_kread(uint64_t addr) {
+    uint64_t val;
+    kread(_kfd, addr, &val, sizeof(uint64_t));
+    return val;
+}
+void kfd_kwrite(uint64_t addr, uint64_t val) {
+    uint64_t _buf[1] = {};
+    _buf[0] = val;
+    kwrite((uint64_t)(_kfd), &_buf, addr, sizeof(uint64_t));
+}
+///==============
+
+
 void krw_init_tfp0(mach_port_t port) {
     tfp0KernPort = port;
     
@@ -54,6 +73,11 @@ int krw_init_weightBufs(void) {
     return exploit();
 }
 
+int krw_init_kfd(uint64_t method) {
+    _kfd = kopen(1024, method, kread_IOSurface, kwrite_IOSurface);
+    return 0;
+}
+
 int krw_init_mcbc(void) {
     return mcbc_run_exploit();
 }
@@ -64,6 +88,10 @@ void krw_cleanup_tfp0(void) {
 
 int krw_cleanup_weightBufs(void) {
     cleanup();
+}
+
+int krw_cleanup_kfd(void) {
+    kclose(_kfd);
 }
 
 int krw_cleanup_mcbc(void) {
@@ -83,6 +111,7 @@ int krw_kwrite_tfp0(uintptr_t kernDst, const void * _Nonnull src, size_t size) {
 uintptr_t krw_kbase_tfp0(void) {
     return tfp0KBase;
 }
+
 
 int krw_kread_weightBufs(uintptr_t kernSrc, void * _Nonnull dst, size_t size) {
     uint32_t *v32 = (uint32_t*) dst;
@@ -126,6 +155,57 @@ int krw_kwrite_weightBufs(uintptr_t kernDst, const void * _Nonnull src, size_t s
 uintptr_t krw_kbase_weightBufs(void) {
     return gKernelBase;
 }
+
+// kfd
+
+int krw_kread_kfd(uintptr_t kernSrc, void * _Nonnull dst, size_t size)
+{
+    uint64_t *v32 = (uint64_t*) dst;
+    
+    while (size) {
+        size_t bytesToRead = (size > 8) ? 8 : size;
+        uint64_t value = kfd_kread(kernSrc);
+        kernSrc += 8;
+        
+        if (bytesToRead == 8) {
+            *v32++ = value;
+        } else {
+            memcpy(dst, &value, bytesToRead);
+        }
+        
+        size -= bytesToRead;
+    }
+
+    
+    return 0;
+    
+}
+
+int krw_kwrite_kfd(uintptr_t kernDst, const void * _Nonnull src, size_t size)
+{
+    uint8_t *v8 = (uint8_t*) src;
+    
+    while (size >= 8) {
+        kfd_kwrite(kernDst, *(uint64_t*)v8);
+        size -= 8;
+        v8 += 8;
+        kernDst += 8;
+    }
+    
+    if (size) {
+        uint64_t val = kfd_kread(kernDst);
+        memcpy(&val, v8, size);
+        kfd_kwrite(kernDst, val);
+    }
+    
+    return 0;
+}
+
+uintptr_t krw_kbase_kfd(void) {
+    return kfd_kbase;
+}
+
+
 
 int krw_kread_mcbc(uintptr_t kernSrc, void * _Nonnull dst, size_t size) {
     uint64_t *v32 = (uint64_t*) dst;

@@ -13,6 +13,7 @@ import iDownload
 import PatchfinderUtils
 import UIKit
 
+
 var defaults: UserDefaults? = nil
 public func defs() -> UserDefaults {
     if defaults == nil {
@@ -31,6 +32,15 @@ public func exploitSupport() throws -> String {
     }
     return kexploit!
 }
+public func puafMethod() throws -> String {
+    let puaf = (defs().string(forKey: "puaf_method"))
+    guard puaf != nil else {
+        KRW.logger("[-] No puaf method selected for kfd!")
+        throw KRWError.noExploitSelected
+//        return ""
+    }
+    return puaf!
+}
 
 public enum KRWError: Error {
     case failed(providerError: Int32)
@@ -45,6 +55,7 @@ public enum KRWExploit {
     case tfp0
     case weightBufs
     case mcbc
+    case kfd
 }
 
 public class KRW {
@@ -98,6 +109,21 @@ public class KRW {
             return
         }
         
+        guard let exploit = try? exploitSupport() else {
+            throw KRWError.noExploitSelected
+        }
+        guard let puafStr = try? puafMethod() else {
+            throw KRWError.noExploitSelected
+        }
+        
+        var puaf = UInt64(1)
+        if puafStr == "puaf_physpuppet" {
+            puaf = UInt64(0)
+        } else if puafStr == "puaf_smith" {
+            puaf = UInt64(1)
+        }
+        
+        
         logger("[#] Status: Gaining KRW")
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         
@@ -131,6 +157,16 @@ public class KRW {
                 
                 selectedExploit = .mcbc
                 return
+                
+            case .kfd:
+                
+                let res = krw_init_kfd(puaf)
+                guard res == 0 else {
+                    throw KRWError.failed(providerError: res)
+                }
+                
+                selectedExploit = .kfd
+                return
             }
         }
         
@@ -139,11 +175,8 @@ public class KRW {
         // Select an exploit
         // Try tfp0 first
         
-        guard let exploit = try? exploitSupport() else {
-            throw KRWError.noExploitSelected
-        }
         
-        KRW.logger("[+] kexploit: \(exploit)")
+        
         
         var tfp0: mach_port_t = 0
         if exploit == "tfp0" {
@@ -152,9 +185,8 @@ public class KRW {
             krw_init_tfp0(tfp0)
             selectedExploit = .tfp0
             return
-        }
-        
-        if exploit == "mcbc" {
+
+        }else if exploit == "mcbc" {
             // On a stock device, check if mcbc is supported
             // If it is, use it
             
@@ -165,9 +197,7 @@ public class KRW {
             }
             
             logger("[-] mcbc failed!")
-        }
-        
-        if exploit == "weightBufs" {
+        } else if exploit == "weightBufs" {
             logger("[+] Selected weightBufs")
             
             // Finally, try weightBufs
@@ -178,8 +208,21 @@ public class KRW {
             }
             
             selectedExploit = .weightBufs
-        }
-        else {
+            return
+            
+        } else if exploit == "kfd" {
+            logger("[+] Selected kfd")
+            logger("[+] PUAF method: \(puafStr)")
+            
+            let res = krw_init_kfd(puaf)
+            guard res == 0 else {
+                logger("[-] kfd -> No more exploits to try!")
+                throw KRWError.failed(providerError: res)
+            }
+            
+            selectedExploit = .kfd
+            return
+        } else {
             exit(0)
         }
     }
@@ -202,7 +245,12 @@ public class KRW {
                 
             case .mcbc:
                 return krw_kread_mcbc(UInt(virt), ptr.baseAddress!, size)
+                
+            case .kfd:
+                return krw_kread_kfd(UInt(virt), ptr.baseAddress!, size)
             }
+            
+            
         }
         
         guard res == 0 else {
@@ -259,6 +307,10 @@ public class KRW {
                 
             case .mcbc:
                 return krw_kwrite_mcbc(UInt(virt), ptr.baseAddress!, ptr.count)
+                
+            case .kfd:
+                return krw_kwrite_kfd(UInt(virt), ptr.baseAddress!, ptr.count)
+                
             }
         }
         
@@ -299,6 +351,9 @@ public class KRW {
             
         case .mcbc:
             return UInt64(krw_kbase_mcbc())
+            
+        case .kfd:
+            return UInt64(krw_kbase_kfd())
         }
     }
     
@@ -307,7 +362,9 @@ public class KRW {
     }
     
     public static func slide(virt: UInt64) throws -> UInt64 {
-        try virt + Self.kslide()
+        let kernel_slide = try Self.kslide()
+        return virt + kernel_slide
+        
     }
     
     public static func cleanup() {
@@ -324,6 +381,9 @@ public class KRW {
             
         case .mcbc:
             krw_cleanup_mcbc()
+            
+        case .kfd:
+            krw_cleanup_kfd()
         }
     }
 }

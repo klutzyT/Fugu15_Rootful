@@ -62,5 +62,4 @@ if CommandLine.arguments.count > 1 {
 
 setenv("PATH", "/sbin:/bin:/usr/sbin:/usr/bin:/private/preboot/jb/sbin:/private/preboot/jb/bin:/private/preboot/jb/usr/sbin:/private/preboot/jb/usr/bin", 1)
 setenv("TERM", "xterm-256color", 1)
-
 Fugu15App.main()

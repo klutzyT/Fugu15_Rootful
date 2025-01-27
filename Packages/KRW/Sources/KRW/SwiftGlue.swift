@@ -82,6 +82,9 @@ public func krw_kread(_ kernSrc: UInt, _ dst: UnsafeMutableRawPointer, size: Int
         
     case .mcbc:
         return krw_kread_mcbc(kernSrc, dst, size)
+        
+    case .kfd:
+        return krw_kread_kfd(kernSrc, dst, size)
     }
 }
 
@@ -96,5 +99,8 @@ public func krw_kwrite(_ kernDst: UInt, _ src: UnsafeRawPointer, size: Int) -> I
         
     case .mcbc:
         return krw_kwrite_mcbc(kernDst, src, size)
+    case .kfd:
+        return krw_kwrite_kfd(kernDst, src, size)
+
     }
 }

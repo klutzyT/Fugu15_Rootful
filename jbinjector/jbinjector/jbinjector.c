@@ -30,7 +30,6 @@
 #include <ptrauth.h>
 #include <sys/mman.h>
 #include <limits.h>
-
 #include "CodeSignature.h"
 
 typedef void * xpc_object_t;
@@ -373,10 +372,10 @@ void fixupImages(void) {
             // Trust this CDHash
             trustCDHash(hash, hashSize, hashType);
             
-            guard (thisMh->cputype == mh->cputype && thisMh->cpusubtype == mh->cpusubtype) else {
-                // We're not using this slice, don't add signature
-                return 0;
-            }
+//            guard (thisMh->cputype == mh->cputype && thisMh->cpusubtype == mh->cpusubtype) else {
+//                // We're not using this slice, don't add signature
+//                return 0;
+//            }
             
             fatOffset = thisFatOffset;
             
@@ -1031,7 +1030,8 @@ int my_csops(pid_t pid, unsigned int ops, void * useraddr, size_t usersize){
         if (pid == getpid() || pid == 0){
             if (retval == 0 && ops == 0 && usersize >=  sizeof(int) && useraddr){
 //                debug("csops useraddr");
-                *(int*)useraddr = (realOps & ~(/*CS_DEBUGGED | CS_GET_TASK_ALLOW*/CS_PLATFORM_BINARY | CS_DEBUGGED)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_VALID | CS_SIGNED);
+                *(int*)useraddr = (realOps & ~/*CS_DEBUGGED | CS_GET_TASK_ALLOW*//*CS_PLATFORM_BINARY | CS_DEBUGGED*/(CS_PLATFORM_BINARY | CS_DEBUGGED)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_VALID | CS_SIGNED);
+                debug("csops useraddr %i", useraddr);;
                 debug("csops useraddr %i", useraddr);
             }
         }
@@ -1274,7 +1274,7 @@ __attribute__((constructor))  int constructor(){
 //            if (access("/usr/lib/oldabi.dylib", F_OK)){
             /*
             debug("dlopen oldabi");
-            void *h = dlopen("/usr/lъib/oldabi.dylib", RTLD_NOW);
+            void *h = dlopen("/usr/lib/oldabi.dylib", RTLD_NOW);
             debug("dlopened oldabi");
             if (!h)
                 debug("oldabi dlopen failed: %s\n", dlerror());
