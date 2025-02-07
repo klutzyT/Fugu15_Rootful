@@ -222,14 +222,12 @@ void info_init(struct kfd* kfd)
     kfd->info.env.ios = true;
     
     if (__builtin_available(iOS 15.0, *)) {
-        if (__builtin_available(iOS 15.4, *)) {
-            kfd->info.env.vid = 8;
-        }
-        else if (__builtin_available(iOS 15.2, *)) {
+        kfd->info.env.vid = 4;
+        if (__builtin_available(iOS 15.2, *)) {
             kfd->info.env.vid = 6;
         }
-        else {
-            kfd->info.env.vid = 4;
+        else if (__builtin_available(iOS 15.4, *)) {
+            kfd->info.env.vid = 8;
         }
         int ptrAuthVal = 0;
         size_t len = sizeof(ptrAuthVal);
@@ -239,22 +237,13 @@ void info_init(struct kfd* kfd)
             kfd->info.env.vid++;
         }
     }
-    else if (__builtin_available(iOS 14.5, *)) {
-        kfd->info.env.vid = 11;
-    }
-    if (__builtin_available(iOS 14.0, *)) {
-        kfd->info.env.vid = 10;
-    }
     
     
-    usize size2 = sizeof(kfd->info.env.osversion);
-    sysctlbyname("kern.osversion", &kfd->info.env.osversion, &size2, NULL, 0);
-    print_success(kfd->info.env.osversion);
     print_i32(kfd->info.env.pid);
     print_u64(kfd->info.env.tid);
     print_u64(kfd->info.env.vid);
     print_bool(kfd->info.env.ios);
-    print_string(kfd->info.env.osversion);
+//    print_string(kfd->info.env.osversion);
     print_u64(kfd->info.env.maxfilesperproc);
 }
 

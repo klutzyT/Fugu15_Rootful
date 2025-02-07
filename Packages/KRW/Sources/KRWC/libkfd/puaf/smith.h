@@ -115,7 +115,6 @@ void smith_run(struct kfd* kfd)
      * STEP 4:
      */
     assert_mach(vm_protect(mach_task_self(), smith->vme[1].address, smith->vme[3].size, false, VM_PROT_DEFAULT));
-
     /*
      * STEP 5:
      */

@@ -123,7 +123,6 @@ public class KRW {
             puaf = UInt64(1)
         }
         
-        
         logger("[#] Status: Gaining KRW")
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         

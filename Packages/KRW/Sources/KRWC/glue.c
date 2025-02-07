@@ -74,7 +74,7 @@ int krw_init_weightBufs(void) {
 }
 
 int krw_init_kfd(uint64_t method) {
-    _kfd = kopen(1024, method, kread_IOSurface, kwrite_IOSurface);
+    _kfd = kopen(2048, method, kread_IOSurface, kwrite_IOSurface);
     return 0;
 }
 
