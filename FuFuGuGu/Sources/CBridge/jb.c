@@ -145,7 +145,7 @@ extern char **environ;
 
 
 int my_kill(pid_t pid, int sig) {
-    if (pid == -1 && sig == SIGKILL){
+    if (pid == -1 && sig == SIGKILL) {
         int fd_console = open("/dev/console", O_RDWR, 0);
         dprintf(fd_console, "Launchd is about to restart userspace (hopefully!), doing execve...\n");
         

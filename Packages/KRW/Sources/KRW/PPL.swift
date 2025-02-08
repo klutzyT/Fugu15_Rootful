@@ -8,6 +8,7 @@
 
 import Foundation
 import KRWC
+import UIKit
 
 let FAKE_PHYSPAGE_TO_MAP: UInt64 = 0x13370000
 public let PPL_MAP_ADDR:  UInt64 = 0x2000000 // This is essentially guaranteed to be unused, minimum address is usually 0x100000000
@@ -21,7 +22,8 @@ public extension KRW {
         }
         
         logger("[#] Status: Bypassing PPL")
-        
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
         gKernelPmap = kernelProc!.task!.vmMap!.pmap!.address
         
         if !pplBypass() {

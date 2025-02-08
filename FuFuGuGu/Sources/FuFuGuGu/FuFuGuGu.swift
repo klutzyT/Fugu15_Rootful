@@ -20,21 +20,27 @@ let S_ISGID = mode_t(0002000)
 let P_SUGID = UInt64(0x00000100)
 
 /* code signing attributes of a process */
-let CS_HARD =             UInt32(0x00000100)  /* don't load invalid pages */
-let CS_KILL =             UInt32(0x00000200)  /* kill process if it becomes invalid */
-let CS_RESTRICT =         UInt32(0x00000800)  /* tell dyld to treat restricted */
-let CS_ENFORCEMENT =      UInt32(0x00001000)  /* require enforcement */
-let CS_REQUIRE_LV  =      UInt32(0x00002000)  /* require library validation */
-let CS_PLATFORM_BINARY =  UInt32(0x04000000)  /* this is a platform binary */
-let CS_VALID =            UInt32(0x00000001)  /* dynamically valid */
-let CS_SIGNED =           UInt32(0x20000000)  /* process has a signature (may have gone invalid) */
-let CS_ADHOC =            UInt32(0x00000002)  /* ad hoc signed */
-let CS_GET_TASK_ALLOW =   UInt32(0x00000004)  /* has get-task-allow entitlement */
-let CS_INSTALLER  =       UInt32(0x00000008)  /* has installer entitlement */
-let CS_FORCED_LV =        UInt32(0x00000010)  /* Library Validation required by Hardened System Policy */
-let CS_INVALID_ALLOWED =  UInt32(0x00000020)  /* (macOS Only) Page invalidation allowed by task port policy */
-let CS_PLATFORM_PATH =    UInt32(0x08000000)  /* platform binary by the fact of path (osx only) */
-let CS_EXEC_INHERIT_SIP = UInt32(0x00800000)  /* set CS_INSTALLER on any exec'ed process */
+let CS_HARD =                    UInt32(0x00000100)  /* don't load invalid pages */
+let CS_KILL =                    UInt32(0x00000200)  /* kill process if it becomes invalid */
+let CS_RESTRICT =                UInt32(0x00000800)  /* tell dyld to treat restricted */
+let CS_ENFORCEMENT =             UInt32(0x00001000)  /* require enforcement */
+let CS_REQUIRE_LV  =             UInt32(0x00002000)  /* require library validation */
+let CS_PLATFORM_BINARY =         UInt32(0x04000000)  /* this is a platform binary */
+let CS_VALID =                   UInt32(0x00000001)  /* dynamically valid */
+let CS_SIGNED =                  UInt32(0x20000000)  /* process has a signature (may have gone invalid) */
+let CS_ADHOC =                   UInt32(0x00000002)  /* ad hoc signed */
+let CS_GET_TASK_ALLOW =          UInt32(0x00000004)  /* has get-task-allow entitlement */
+let CS_INSTALLER  =              UInt32(0x00000008)  /* has installer entitlement */
+let CS_FORCED_LV =               UInt32(0x00000010)  /* Library Validation required by Hardened System Policy */
+let CS_INVALID_ALLOWED =         UInt32(0x00000020)  /* (macOS) Page invalidation allowed by task port policy */
+let CS_PLATFORM_PATH =           UInt32(0x08000000)  /* platform binary by the fact of path (osx only) */
+let CS_EXEC_INHERIT_SIP =        UInt32(0x00800000)  /* set CS_INSTALLER on any exec'ed process */
+let CS_DYLD_PLATFORM =           UInt32(0x2000000)   /* dyld used to load this is a platform binary */
+let CS_ENTITLEMENTS_VALIDATED =  UInt32(0x0004000)   /* code signature permits restricted entitlements */
+let CS_LINKER_SIGNED =           UInt32(0x00020000)  /* Automatically signed by the linker */
+let CS_DATAVAULT_CONTROLLER =    UInt32(0x80000000)  /* has Data Vault controller entitlement */
+let CS_DEBUGGED =                UInt32(0x10000000)  /* process is currently or has previously been debugged and allowed to run with invalid pages */
+
 
 func myStripPtr(_ ptr: OpaquePointer) -> UInt64 {
     UInt64(UInt(bitPattern: stripPtr(ptr)))
@@ -125,8 +131,8 @@ func csdebug(request: XPCDict, reply: XPCDict) -> UInt64 {
     guard let flags = proc.cs_flags else {return 3}
     
     consolelog("flags: \(flags)")
-    let flags_new = (flags & ~0x703b10) | 0x10000024
-    proc.cs_flags = flags_new | CS_ADHOC | CS_VALID
+    let flags_new = (flags & ~0x703b10)
+    proc.cs_flags = flags_new | CS_SIGNED | CS_DYLD_PLATFORM | CS_VALID | CS_EXEC_INHERIT_SIP | CS_INSTALLER | CS_DEBUGGED | CS_INVALID_ALLOWED | CS_GET_TASK_ALLOW | CS_REQUIRE_LV
     consolelog("flags_new: \(proc.cs_flags)")
     guard let pmap = proc.task?.vmMap?.pmap else {
         return 4
@@ -137,15 +143,15 @@ func csdebug(request: XPCDict, reply: XPCDict) -> UInt64 {
     if let forceDisablePAC = request["forceDisablePAC"] as? UInt64,
        forceDisablePAC == 1 {
         
-        //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=//
-        /// ATTENTION!!! OFFFSETS ARE HARDCODED FOR iPhone SE 2020 iOS 15.2  |
-        /// If these offsets does NoT work - try uncommenting ones in structs.swift                        |
-        /// It those does not work either - disassemble iOS kernel                                                 |
-        //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=//
+        //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-//
+        /// ATTENTION!!! OFFFSETS ARE HARDCODED FOR iPhone SE 2020 iOS 15.2  //
+        /// If these offsets does NoT work - try uncommenting ones in structs.swift.             //
+        /// It those does not work either - disassemble iOS kernel.                                      //
+        //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=//
         
-        pmap.jop_disabled = 1                    //0xC8  [+]   0xC4  [+]   0xC0  [-]
-        proc.task?.jop_disabled = 1              //0x348 [+]
-        proc.task?.firstThread?.jop_disabled = 1 //0x15E [+]               0x15F [-]
+        pmap.jop_disabled = 1                    //0xC8  [+] | 0xC4  [+] | 0xC0  [-]
+        proc.task?.jop_disabled = 1              //          | 0x348 [+] |
+        proc.task?.firstThread?.jop_disabled = 1 //          | 0x15E [+] | 0x15F [-]
         
         reply["pacDisabled"] = 1 as UInt64
     }

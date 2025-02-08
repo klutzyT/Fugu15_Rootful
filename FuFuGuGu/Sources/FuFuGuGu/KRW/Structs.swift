@@ -240,7 +240,7 @@ public class Task: KernelObject {
     
     public var jop_disabled: UInt8? {
         get {
-            var offset: UInt64 = 0x370 //panic
+            var offset: UInt64 = 0x370
             if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >= 2 {
                 // FIXME: Hardcoded offsets
                 offset = 0x348
@@ -252,7 +252,7 @@ public class Task: KernelObject {
         
         set {
             if let new = newValue {
-                var offset: UInt64 = 0x370 //panic
+                var offset: UInt64 = 0x370 
                 if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15 && ProcessInfo.processInfo.operatingSystemVersion.minorVersion >=  2 {
                     // FIXME: Hardcoded offsets
                     offset = 0x348

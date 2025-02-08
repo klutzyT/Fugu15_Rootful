@@ -212,6 +212,8 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
         KRW.logger("[+] Tweaks enabled!")
     }
     
+    
+    
     let hndl = dlopen("/usr/lib/jbinjector.dylib", RTLD_NOW)
     typealias ft = @convention(c) (_: UnsafePointer<CChar>) -> Int
     let f = unsafeBitCast(dlsym(hndl, "trustCDHashesForBinaryPathSimple"), to: ft.self)
@@ -232,13 +234,26 @@ func iDownload_doit(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) 
     
     setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/jbinjector.dylib", 1)
     setenv("DYLD_AMFI_FAKE", "0xFF", 1)
-    setenv("TERM", "xterm-256color", 1);
+
+
     KRW.logger("[+] Env vars set!")
     KRW.logger("[#] Status: Running uicache")
     UIImpactFeedbackGenerator(style: .light).impactOccurred()
     _ = try? hndlr.exec("/usr/bin/dash", args: ["-c", "uicache -a"])
     
     try hndlr.sendline("OK")
+}
+
+
+
+func fixOurProc() -> Int {
+    let pid = getpid()
+    guard let proc = try? Proc(pid: pid_t(pid)) else {return 1}
+    guard let flags = proc.cs_flags else {return 2}
+    var flags_new = flags & ~(CS_HARD | CS_KILL  | CS_RESTRICT)
+    flags_new = flags_new | CS_GET_TASK_ALLOW | CS_PLATFORM_BINARY | CS_INSTALLER | CS_TF_PLATFORM
+    proc.cs_flags = flags_new
+    return 0
 }
 
 func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]) throws {
@@ -263,7 +278,16 @@ func iDownload_stashd(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [String]
         strdup(String(cpu_ttep)),     // For easy virt-to-phys
         nil
     ]
-        
+    
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-//
+    // Before starting with posix_spawn we need to fix out cs_flags. We need to add:                   //
+    // CS_PLATFORM_BINARY | CS_INSTALLER | CS_GET_TASK_ALLOW - no tsure for CS_INSTALLER               //
+    // And remove:                                                                                     //
+    // CS_RESTRICT | CS_HARD | CS_KILL                                                                 //
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-//
+    
+    let err = fixOurProc()
+    
     var fileActions: posix_spawn_file_actions_t?
     posix_spawn_file_actions_init(&fileActions)
 //    KRW.logger("[+] posix_spawn_file_actions_init")

@@ -13,18 +13,49 @@ import iDownload
 import PatchfinderUtils
 import UIKit
 
+
+var defaults: UserDefaults? = nil
+public func defs() -> UserDefaults {
+    if defaults == nil {
+        let defaultsPath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].path + "/Preferences/de.pinauten.Fugu15-Rootful.plist"
+        defaults = UserDefaults.init(suiteName: defaultsPath)
+    }
+    return defaults!
+}
+
+public func exploitSupport() throws -> String {
+    let kexploit = (defs().string(forKey: "kexploit"))
+    guard kexploit != nil else {
+        KRW.logger("[-] No kernel exploit selected!")
+        throw KRWError.noExploitSelected
+//        return ""
+    }
+    return kexploit!
+}
+public func puafMethod() throws -> String {
+    let puaf = (defs().string(forKey: "puaf_method"))
+    guard puaf != nil else {
+        KRW.logger("[-] No puaf method selected for kfd!")
+        throw KRWError.noExploitSelected
+//        return ""
+    }
+    return puaf!
+}
+
 public enum KRWError: Error {
     case failed(providerError: Int32)
     case patchfinderFailed(symbol: String)
     case failedToTranslate(address: UInt64, table: String, entry: UInt64)
     case failedToGetKObject(ofPort: mach_port_t)
     case failedToGetOurProc
+    case noExploitSelected
 }
 
 public enum KRWExploit {
     case tfp0
     case weightBufs
     case mcbc
+    case kfd
 }
 
 public class KRW {
@@ -71,9 +102,25 @@ public class KRW {
         try Self.doInit()
     }
     
+    
+    
     internal static func doInit() throws {
         guard !didInit else {
             return
+        }
+        
+        guard let exploit = try? exploitSupport() else {
+            throw KRWError.noExploitSelected
+        }
+        guard let puafStr = try? puafMethod() else {
+            throw KRWError.noExploitSelected
+        }
+        
+        var puaf = UInt64(1)
+        if puafStr == "puaf_physpuppet" {
+            puaf = UInt64(0)
+        } else if puafStr == "puaf_smith" {
+            puaf = UInt64(1)
         }
         
         logger("[#] Status: Gaining KRW")
@@ -109,44 +156,74 @@ public class KRW {
                 
                 selectedExploit = .mcbc
                 return
+                
+            case .kfd:
+                
+                let res = krw_init_kfd(puaf)
+                guard res == 0 else {
+                    throw KRWError.failed(providerError: res)
+                }
+                
+                selectedExploit = .kfd
+                return
             }
         }
         
-        logger("No exploit selected -> Choosing one automatically")
+        // logger("No exploit selected -> Choosing one automatically")
         
         // Select an exploit
         // Try tfp0 first
+        
+        
+        
+        
         var tfp0: mach_port_t = 0
-        if task_for_pid(mach_task_self_, 0, &tfp0) == KERN_SUCCESS {
-            logger("Automatically selected tfp0")
+        if exploit == "tfp0" {
+            logger("[+] Selected tfp0")
+            task_for_pid(mach_task_self_, 0, &tfp0)
             krw_init_tfp0(tfp0)
             selectedExploit = .tfp0
             return
-        }
-        
-        // On a stock device, check if mcbc is supported
-        // If it is, use it
-        let vers = ProcessInfo.processInfo.operatingSystemVersion
-        if vers.majorVersion >= 15 && vers.minorVersion < 2 {
-            logger("Automatically selected mcbc")
+
+        }else if exploit == "mcbc" {
+            // On a stock device, check if mcbc is supported
+            // If it is, use it
+            
+            logger("[+] Selected mcbc")
             if krw_init_mcbc() == 0 {
                 selectedExploit = .mcbc
                 return
             }
             
-            logger("mcbc failed!")
+            logger("[-] mcbc failed!")
+        } else if exploit == "weightBufs" {
+            logger("[+] Selected weightBufs")
+            
+            // Finally, try weightBufs
+            let res = krw_init_weightBufs()
+            guard res == 0 else {
+                logger("[-] weightBufs -> No more exploits to try!")
+                throw KRWError.failed(providerError: res)
+            }
+            
+            selectedExploit = .weightBufs
+            return
+            
+        } else if exploit == "kfd" {
+            logger("[+] Selected kfd")
+            logger("[+] PUAF method: \(puafStr)")
+            
+            let res = krw_init_kfd(puaf)
+            guard res == 0 else {
+                logger("[-] kfd -> No more exploits to try!")
+                throw KRWError.failed(providerError: res)
+            }
+            
+            selectedExploit = .kfd
+            return
+        } else {
+            exit(0)
         }
-        
-        logger("Automatically selected weightBufs")
-        
-        // Finally, try weightBufs
-        let res = krw_init_weightBufs()
-        guard res == 0 else {
-            logger("weightBufs -> No more exploits to try!")
-            throw KRWError.failed(providerError: res)
-        }
-        
-        selectedExploit = .weightBufs
     }
     
     public static func kread(virt: UInt64, size: Int) throws -> Data {
@@ -167,7 +244,12 @@ public class KRW {
                 
             case .mcbc:
                 return krw_kread_mcbc(UInt(virt), ptr.baseAddress!, size)
+                
+            case .kfd:
+                return krw_kread_kfd(UInt(virt), ptr.baseAddress!, size)
             }
+            
+            
         }
         
         guard res == 0 else {
@@ -224,6 +306,10 @@ public class KRW {
                 
             case .mcbc:
                 return krw_kwrite_mcbc(UInt(virt), ptr.baseAddress!, ptr.count)
+                
+            case .kfd:
+                return krw_kwrite_kfd(UInt(virt), ptr.baseAddress!, ptr.count)
+                
             }
         }
         
@@ -264,6 +350,9 @@ public class KRW {
             
         case .mcbc:
             return UInt64(krw_kbase_mcbc())
+            
+        case .kfd:
+            return UInt64(krw_kbase_kfd())
         }
     }
     
@@ -272,7 +361,9 @@ public class KRW {
     }
     
     public static func slide(virt: UInt64) throws -> UInt64 {
-        try virt + Self.kslide()
+        let kernel_slide = try Self.kslide()
+        return virt + kernel_slide
+        
     }
     
     public static func cleanup() {
@@ -289,6 +380,9 @@ public class KRW {
             
         case .mcbc:
             krw_cleanup_mcbc()
+            
+        case .kfd:
+            krw_cleanup_kfd()
         }
     }
 }

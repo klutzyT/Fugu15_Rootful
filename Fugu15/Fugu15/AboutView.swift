@@ -47,7 +47,7 @@ struct AboutView: View {
                         )
                         .padding(.bottom)
                     
-                    Text("Fugu15 is an (incomplete) Jailbreak for iOS 15.0 - 15.4.1, supporting iPhone XS and newer.")
+                    Text("Fugu15_Rootful is an (incomplete) Jailbreak for iOS 15.0 - 15.4.1, supporting iPhone XS and newer.")
                         .multilineTextAlignment(.center)
                         .frame(width: descriptionMaxWidth)
                 }
@@ -60,11 +60,11 @@ struct AboutView: View {
             // You should change the links below if you make any changes to Fugu15
             // so that others know where to find the source code
             //
-            Link("Source Code", destination: URL(string: "https://github.com/pinauten/Fugu15")!)
+            Link("Source Code", destination: URL(string: "https://github.com/ghh-jb/Fugu15_Rootful")!)
                 .padding([.top, .leading, .trailing])
-            Link("License", destination: URL(string: "https://github.com/pinauten/Fugu15/blob/master/LICENSE")!)
+            Link("License", destination: URL(string: "https://github.com/ghh-jb/Fugu15_Rootful/blob/master/LICENSE")!)
                 .padding([.top, .leading, .trailing])
-            Link("Credits", destination: URL(string: "https://github.com/pinauten/Fugu15/blob/master/README.md#Credits")!)
+            Link("Credits", destination: URL(string: "https://github.com/ghh-jb/Fugu15_Rootful/blob/master/README.md#Credits")!)
                 .padding([.top, .leading, .trailing])
             
             Spacer()
