@@ -8,6 +8,7 @@ Special thanks to [tihmstar](https://twitter.com/tihmstar) for helping to turn F
 [here](https://ghh-jb.github.io/repo/fugu.jpg) you can see. 
 + Found kernel offsets of jop_disabled bit.
 - Offsets are hardcoded - find them if any of provided does not work.
+- Fix spinlock timeout panics - work in progress
 
 # WARNING - ONLY FOR DEVELOPERS
 No support will be provided for this version of Fugu15. Feel free to fix it if you want to, but note that no pull requests with translations will be accepted.
