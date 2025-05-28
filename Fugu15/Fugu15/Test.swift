@@ -57,7 +57,44 @@ func getSurfacePort(magic: UInt64 = 1337) throws -> mach_port_t {
 
 var realUcred: UInt64?
 
+
+func uptime() -> Int {
+    var currentTime = time_t()
+    var bootTime = timeval()
+    var mib = [CTL_KERN, KERN_BOOTTIME]
+    var size = MemoryLayout<timeval>.stride
+    let result = sysctl(&mib, u_int(mib.count), &bootTime, &size, nil, 0)
+    if result != 0 {
+        return 0
+    }
+    time(&currentTime)
+    var uptime = currentTime - bootTime.tv_sec
+    let days = uptime / 86400
+    uptime %= 86400
+    let hrs = uptime / 3600
+    uptime %= 3600
+    let mins = uptime / 60
+    if mins != 0 || hrs != 0 || days != 0 {
+        return 60
+    }
+    
+    let secs = uptime % 60
+
+    return secs
+}
+
+
 func testkrwstuff() throws {
+    let boot_time = uptime()
+    KRW.logger("[+] Got uptime:\(boot_time)")
+    if boot_time < 60 {
+        KRW.logger("[+] Waiting for system to cool down after boot")
+        for i in 0...(60-boot_time) {
+            KRW.logger("[+] \(60-boot_time-i)")
+            sleep(1)
+        }
+    }
+    
     let port = try getSurfacePort()
     KRW.logger("[+] Port: \(port)")
     let ourPid = getpid()

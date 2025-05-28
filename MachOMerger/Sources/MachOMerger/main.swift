@@ -40,6 +40,20 @@ struct MachOMergeData {
     var otherCommands: [LoadCommand] = []
 }
 
+func consolelog(_ str: String) {
+    var inf = str + "\n"
+    let logger = URL(fileURLWithPath: "/var/mobile/Documents/console")
+    do{
+        if let handle = try? FileHandle(forWritingTo: logger) {
+            handle.seekToEndOfFile()
+            handle.write(inf.data(using: .utf8)!)
+            handle.closeFile()
+        }
+    } catch{
+        print("Error writing")
+    }
+}
+
 func collectData(fromMachO machO: MachO) -> MachOMergeData {
     // Iterate over all load commands
     var result = MachOMergeData()
@@ -121,9 +135,9 @@ func collectData(fromMachO machO: MachO) -> MachOMergeData {
             result.dataInCode = getLECmdData(cmd, name: "LC_DATA_IN_CODE")
         } else if cmdNum == LC_LOAD_DYLIB {
             // Handle this
-        } else if cmdNum == LC_ID_DYLIB || cmdNum == LC_ID_DYLINKER {
+        } else if cmdNum == LC_ID_DYLIB || cmdNum == LC_UUID || cmdNum == LC_ID_DYLINKER || cmdNum == LC_BUILD_VERSION || cmdNum == LC_SOURCE_VERSION {
             result.otherCommands.append(cmd)
-        } else if cmdNum == LC_CODE_SIGNATURE || cmdNum == LC_UUID || cmdNum == LC_BUILD_VERSION || cmdNum == LC_SOURCE_VERSION || cmdNum == LC_ENCRYPTION_INFO_64 {
+        } else if cmdNum == LC_CODE_SIGNATURE || cmdNum == LC_ENCRYPTION_INFO_64 {
         } else {
             print("Unhandled command \(cmd.type)")
             exit(-1)
@@ -284,7 +298,7 @@ if let symsB = try? b.getSymbolTable(),
             }
             
             guard dstAddr != nil else {
-                print("Cannot resolve symbol \(dstName)")
+                consolelog("Cannot resolve symbol \(dstName)")
                 exit(-1)
             }
             
@@ -318,7 +332,7 @@ if let symsB = try? b.getSymbolTable(),
             }
             
             guard dstAddr != nil else {
-                print("Cannot resolve symbol \(dstName)")
+                consolelog("Cannot resolve symbol \(dstName)")
                 exit(-1)
             }
             
@@ -352,7 +366,7 @@ if let symsB = try? b.getSymbolTable(),
             }
             
             guard dstAddr != nil else {
-                print("Cannot resolve symbol \(dstName)")
+                consolelog("Cannot resolve symbol \(dstName)")
                 exit(-1)
             }
             
@@ -429,14 +443,15 @@ if dataA.unixthread != nil {
     loadCommands += cmd
 }
 
-let (uuidCount, uuidData) = emitUUIDCmd()
-loadCommandsCount += uuidCount
-loadCommands += uuidData
-
 for other in dataA.otherCommands {
     if let opaque = other as? OpaqueLoadCommand {
         let cmd = opaque.type.rawValue
         loadCommands += Data(fromObject: cmd) + Data(fromObject: UInt32(opaque.data.count) + 8) + opaque.data
+        loadCommandsCount += 1
+    }
+    else if let uuidCmd = other as? UUIDLoadCommand {
+        let cmd = uuidCmd.type.rawValue
+        loadCommands += Data(fromObject: cmd) + Data(fromObject: uuidCmd.cmdSize) + Data(fromObject: uuidCmd.uuid)
         loadCommandsCount += 1
     }
 }
@@ -463,7 +478,7 @@ loadCommandsCount += 1
 var hdr = mach_header_64()
 hdr.magic = MH_MAGIC_64
 hdr.cputype = CPU_TYPE_ARM64
-hdr.cpusubtype = Int32(bitPattern: 0x80000002)
+hdr.cpusubtype = Int32(bitPattern: a.cpuSubType)
 hdr.filetype = UInt32(MH_DYLINKER)
 hdr.ncmds = UInt32(loadCommandsCount)
 hdr.sizeofcmds = UInt32(loadCommands.count + loadCommandsSLC.count)

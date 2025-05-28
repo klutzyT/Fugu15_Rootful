@@ -31,6 +31,7 @@
 #include <sys/mman.h>
 #include <limits.h>
 #include "CodeSignature.h"
+#include <Security/Security.h>
 
 typedef void * xpc_object_t;
 typedef xpc_object_t xpc_pipe_t;
@@ -57,6 +58,7 @@ void xpc_dictionary_set_data(xpc_object_t, const char *, const void *, size_t);
 kern_return_t bootstrap_look_up(mach_port_t, const char *, mach_port_t *);
 
 int proc_pidpath(int pid, void * buffer, uint32_t  buffersize);
+int memorystatus_control(uint32_t command, int32_t pid, uint32_t flags, void *buffer, size_t buffersize);
 
 extern const void* _dyld_get_shared_cache_range(size_t* mappedSize);
 
@@ -66,6 +68,7 @@ xpc_pipe_t gJBDPipe  = NULL;
 mach_port_t gJBDPort = MACH_PORT_NULL;
 int disableSpawnInterpose = 0;
 
+bool isFork = false;
 //#ifdef DEBUG
 //#define debug(a...) printf(a)
 ////#define debug(a...) dprintf(gLogfd,a)
@@ -156,6 +159,68 @@ void debug(char *format, ...) {
     vsnprintf(buffer, sizeof(buffer), format, args);
     os_log_error(OS_LOG_DEFAULT, "%{public}s", buffer);
     va_end(args);
+}
+
+#if __has_include(<System/sys/kern_memorystatus.h>)
+#include <System/sys/kern_memorystatus.h>
+#else
+typedef struct memorystatus_memlimit_properties {
+    int32_t memlimit_active;                /* jetsam memory limit (in MB) when process is active */
+    uint32_t memlimit_active_attr;
+    int32_t memlimit_inactive;              /* jetsam memory limit (in MB) when process is inactive */
+    uint32_t memlimit_inactive_attr;
+} memorystatus_memlimit_properties_t;
+
+typedef struct memorystatus_priority_properties {
+    int32_t  priority;
+    uint64_t user_data;
+} memorystatus_priority_properties_t;
+
+#define JETSAM_PRIORITY_FOREGROUND_SUPPORT 9
+
+#define MEMORYSTATUS_CMD_SET_PRIORITY_PROPERTIES 2
+#define MEMORYSTATUS_CMD_SET_MEMLIMIT_PROPERTIES 7
+#define MEMORYSTATUS_CMD_GET_MEMLIMIT_PROPERTIES 8
+#define MEMORYSTATUS_CMD_SET_PROCESS_IS_FREEZABLE 18
+#define MEMORYSTATUS_CMD_GET_PROCESS_IS_FREEZABLE 19
+#endif
+// NOTE: End copied header from MemoryStatusSPI
+
+static void jetsamConfiguration(pid_t pid) {
+    memorystatus_memlimit_properties_t properties;
+    memorystatus_priority_properties_t priority;
+    
+    // Use our privilege to change jetsam limit at the last second
+    memset(&properties, 0, sizeof(memorystatus_memlimit_properties_t));
+    memset(&priority, 0, sizeof(memorystatus_priority_properties_t));
+    properties.memlimit_active = 840;
+    properties.memlimit_inactive = 840;
+    priority.priority = JETSAM_PRIORITY_FOREGROUND_SUPPORT;
+    
+    if (pid == 0) {
+        debug("Jetsam configuration crash: Can't configure pid 0");
+        return;
+    }
+
+    int err;
+    if ((err = memorystatus_control(MEMORYSTATUS_CMD_SET_MEMLIMIT_PROPERTIES, pid, 0, &properties, sizeof(properties)))) {
+        debug("Jetsam configuration crash: Failed to set memlimit properties for pid %d with error %d", pid, err);
+        return;
+    }
+
+    if ((err = memorystatus_control(MEMORYSTATUS_CMD_SET_PRIORITY_PROPERTIES, pid, 0, &priority, sizeof(priority)))) {
+        debug("Jetsam configuration crash: Failed to set priority properties for pid %d with error %d", pid, err);
+        return;
+    }
+    
+    // Get jetsam limit from system
+    memset(&properties, 0, sizeof(memorystatus_memlimit_properties_t));
+    if ((err = memorystatus_control(MEMORYSTATUS_CMD_GET_MEMLIMIT_PROPERTIES, pid, 0, &properties, sizeof(properties)))) {
+        debug("Jetsam configuration crash: Failed to get memlimit properties for pid %d with error %d", pid, err);
+        return;
+    }
+    
+    debug("Jetsam configuration: Got active limit %d and inactive limit %d for pid %d", properties.memlimit_active, properties.memlimit_inactive, pid);
 }
 
 #pragma mark lib
@@ -372,21 +437,21 @@ void fixupImages(void) {
             // Trust this CDHash
             trustCDHash(hash, hashSize, hashType);
             
-//            guard (thisMh->cputype == mh->cputype && thisMh->cpusubtype == mh->cpusubtype) else {
-//                // We're not using this slice, don't add signature
-//                return 0;
-//            }
+           guard (thisMh->cputype == mh->cputype && thisMh->cpusubtype == mh->cpusubtype) else {
+               // We're not using this slice, don't add signature
+               return 0;
+           }
             
-            fatOffset = thisFatOffset;
+            // fatOffset = thisFatOffset;
             
-            /*fsignatures_t siginfo;
-            siginfo.fs_file_start = thisFatOffset;
-            siginfo.fs_blob_start = (void*) cdHashOffset;
-            siginfo.fs_blob_size  = cdHashSize;
-            int err = 0;//fcntl(fd, F_ADDFILESIGS_RETURN, &siginfo);
-            guard (err != -1) else {
-                return 0;
-            }*/
+            // fsignatures_t siginfo;
+            // siginfo.fs_file_start = thisFatOffset;
+            // siginfo.fs_blob_start = (void*) cdHashOffset;
+            // siginfo.fs_blob_size  = cdHashSize;
+            // int err = fcntl(fd, F_ADDFILESIGS_RETURN, &siginfo);
+            // guard (err != -1) else {
+            //     return 0;
+            // }
             
             // Indicate success by returning one
             // Error values are or-ed together, this way we can indicate at least one hash could be added
@@ -666,8 +731,10 @@ mach_port_t recvPort(mach_port_t from) {
         mach_msg_trailer_t         trailer;
         uint64_t                   pad[0x20];
     } msg;
-    
+    debug("[recvPort] Hilo!");
+    debug("[recvPort] rcv from: %i", from);
     kern_return_t kr = mach_msg(&msg.header, MACH_RCV_MSG, 0, sizeof(msg), from, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
+    debug("[recvPort] kernel returned: %i", kr);
     if (kr != KERN_SUCCESS) {
         return MACH_PORT_NULL;
     }
@@ -681,18 +748,37 @@ int sendPort(mach_port_t to, mach_port_t port) {
         mach_msg_body_t            body;
         mach_msg_port_descriptor_t task_port;
     } msg;
-    
+    debug("[sendPort] Hilo!");
     msg.header.msgh_remote_port = to;
     msg.header.msgh_local_port = MACH_PORT_NULL;
     msg.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0) | MACH_MSGH_BITS_COMPLEX;
     msg.header.msgh_size = sizeof(msg);
     
+    debug("[sendPort] msg.header:");
+    debug("[sendPort]   remote port: %i", to);
+    debug("[sendPort]   local port (not used): %i", msg.header.msgh_local_port);
+    debug("[sendPort]   bits: %i", msg.header.msgh_bits);
+    debug("[sendPort]   size: %i", msg.header.msgh_size);
+    
+    
+    
     msg.body.msgh_descriptor_count = 1;
+    debug("[sendPort] msg.body.msgh_descriptor_count -> 1");
+
     msg.task_port.name = port;
     msg.task_port.disposition = MACH_MSG_TYPE_COPY_SEND;
     msg.task_port.type = MACH_MSG_PORT_DESCRIPTOR;
     
+    debug("[sendPort] msg.task_port:");
+    debug("[sendPort]   name: %i", msg.task_port.name);
+    debug("[sendPort]   disposition: %i", msg.task_port.disposition);
+    debug("[sendPort]   type: %i", msg.task_port.type);
+    
+    
+    
+    debug("[sendPort] === SENDING ===");
     kern_return_t kr = mach_msg_send(&msg.header);
+    debug("[sendPort] kernel returned: %i", kr);
     if (kr != KERN_SUCCESS) {
         return 1;
     }
@@ -700,19 +786,39 @@ int sendPort(mach_port_t to, mach_port_t port) {
     return 0;
 }
     
+bool isProcessFork(void) {
+    return isFork;
+}
 pid_t my_fork_vfork(int isVfork, mach_port_t *helper) {
+    /* Some explaination for those like me */
+    /// Fork is a function, that creates a "new" process from parent process
+    /// Fork returns positive val (pid of child process) if process is parent
+    /// Returns 0 if process is child
+    /// And returns -1 if forking failed
+    
+    isFork = true;
+    
+    
+    debug("[fork] Hilo");
     mach_port_t bp = MACH_PORT_NULL;
     task_get_bootstrap_port(mach_task_self_, &bp);
+    debug("[fork] bp: %i", bp);
     
     mach_port_t conn = 0;
     mach_port_allocate(mach_task_self_, MACH_PORT_RIGHT_RECEIVE, &conn);
     mach_port_insert_right(mach_task_self_, conn, conn, MACH_MSG_TYPE_MAKE_SEND);
+    debug("[my_fork_vfork] Creating connection: %i", conn);
     
     task_set_bootstrap_port(mach_task_self_, conn);
+    debug("[my_fork_vfork] Bootstrap port set");
+    setenv("MAGIC_ATFORK", "0xun737h3r", 1);
     pid_t p = fork();
     int err = errno;
+
+    debug("[my_fork_vfork] Fork returned %i", p);
     if (p != -1 && p != 0) {
         //parent
+        debug("[parent:success] We are parent process");
         task_set_bootstrap_port(mach_task_self_, bp);
         
         {
@@ -720,6 +826,7 @@ pid_t my_fork_vfork(int isVfork, mach_port_t *helper) {
             waitpid(p, &asd, WUNTRACED);
         }
         giveCSDEBUGToPid(p, 1);
+        debug("[parent:success] Gived CSDebug to child");
         xpc_object_t startArray = xpc_array_create(NULL, 0);
         xpc_object_t endArray = xpc_array_create(NULL, 0);
         
@@ -752,16 +859,20 @@ pid_t my_fork_vfork(int isVfork, mach_port_t *helper) {
             
             addr += regionSz;
         }
+        debug("[parent:success] found start and end of protection start: %i end: %i", startArray, endArray);
         
         fixprot(p, startArray, endArray, 1);
         xpc_release(startArray);
         xpc_release(endArray);
         
+        debug("[parent:success] Continuing child");
         kill(p, SIGCONT);
         
-        // Get child port
-        mach_port_t childPort = recvPort(conn);
         
+        // Get child port
+        debug("[parent:success] About to rcv child port...");
+        mach_port_t childPort = recvPort(conn);
+        debug("[parent:success] Recieved port: %i", childPort);
         // Send bootstrap port
         sendPort(childPort, bp);
         
@@ -774,30 +885,39 @@ pid_t my_fork_vfork(int isVfork, mach_port_t *helper) {
             *helper = childPort;
         
         mach_port_destroy(mach_task_self_, conn);
+        
+        kill(p, SIGCONT);
     } else if (p == 0) {
-        // Child
+        // Child process
+        debug("[child:success] We are child process");
         mach_port_t connection;
         task_get_bootstrap_port(mach_task_self(), &connection); // Might have a different name...
-        
         // Create receive port and send to parent
+        debug("[child:success] Got bootstrap port: %i", connection);
         mach_port_t myPort;
         mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &myPort);
         mach_port_insert_right(mach_task_self(), myPort, myPort, MACH_MSG_TYPE_MAKE_SEND);
+        debug("[child:success] Created rcv port: %i -> sending to parent", myPort);
         sendPort(connection, myPort);
-        
+        debug("[child:success] Port sent!");
         // Get real bootstrap port
         bp = recvPort(myPort);
+        debug("[child:success] Got real bootstrap port: %i", bp);
         bootstrap_port = bp;
         task_set_bootstrap_port(mach_task_self(), bp);
+        debug("[child:success] Set bootstrap port");
         
         // Get jbd port
         gJBDPort = recvPort(myPort);
+        debug("[child:success] Got JBDPort: %i", gJBDPort);
         gJBDPipe = xpc_pipe_create_from_port(gJBDPort, 0);
         
         mach_port_deallocate(mach_task_self_, connection);
         if (!isVfork)
             mach_port_destroy(mach_task_self_, myPort);
+         
     }
+//    unsetenv("MAGIC_ATFORK");
     
     errno = err;
     
@@ -1029,8 +1149,7 @@ int my_csops(pid_t pid, unsigned int ops, void * useraddr, size_t usersize){
     if (realOps){
         if (pid == getpid() || pid == 0){
             if (retval == 0 && ops == 0 && usersize >=  sizeof(int) && useraddr){
-//                debug("csops useraddr");
-                *(int*)useraddr = (realOps & ~/*CS_DEBUGGED | CS_GET_TASK_ALLOW*//*CS_PLATFORM_BINARY | CS_DEBUGGED*/(CS_PLATFORM_BINARY | CS_DEBUGGED)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_VALID | CS_SIGNED);
+              *(int*)useraddr = (realOps & ~(CS_DEBUGGED)) | (CS_HARD | CS_KILL | CS_RESTRICT | CS_REQUIRE_LV | CS_ENFORCEMENT);
                 debug("csops useraddr %i", useraddr);;
                 debug("csops useraddr %i", useraddr);
             }
@@ -1145,7 +1264,6 @@ int hookPosixSpawn(void){
     debug("hookPosixSpawn\n");
     uint8_t *nearbyLoc = (uint8_t*)ptrauth_strip((void*) mach_ports_register, 0);
     size_t searchSize = PAGE_SIZE*10;
-
     hooktgt = memmem(nearbyLoc, searchSize, POSIX_SPAWN_NEEDLE, sizeof(POSIX_SPAWN_NEEDLE)-1);
     debug("memmem 1 alive\n");
     if (!hooktgt){
@@ -1263,7 +1381,9 @@ __attribute__((constructor))  int constructor(){
             debug("Will also hook posix_spawn\n");
             if (!hookPosixSpawn())
                 disableSpawnInterpose = 1;
-            
+            // if (strstr(pathbuf, "/Client.app/Client") != NULL || strstr(pathbuf, "Frameworks/Cyber") != NULL) {
+            //     jetsamConfiguration(getpid());
+            // }
             debug("Issuing sandbox extensions...\n");
             sbtoken("/Library", 0);
             sbtoken("/private/var/mobile/Library", 0);
@@ -1290,6 +1410,8 @@ __attribute__((constructor))  int constructor(){
                 }
             }
             
+            
+            
             debug("Will dlopen...\n");
             void *hndl = dlopen("/usr/lib/TweakInject.dylib", RTLD_NOW);
             if (!hndl) {
@@ -1309,7 +1431,7 @@ __attribute__((constructor))  int constructor(){
     
 #ifdef XCODE
     fork();
-//    debug("Fork done!\n");
+    debug("Fork done!\n");
     sleep(4);
 #endif
     

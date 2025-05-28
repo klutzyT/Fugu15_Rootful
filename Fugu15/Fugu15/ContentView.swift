@@ -27,17 +27,17 @@ struct ContentView: View {
                 TabView {
                     JailbreakView(logText: $logText)
                         .tabItem {
-                            Label("Jailbreak", systemImage: "wand.and.stars")
+                            Label("Jailbreak", systemImage: "lock.open")
                         }
                     
                     LogView(logText: $logText)
                         .tabItem {
-                            Label("Log", systemImage: "doc.text.magnifyingglass")
+                            Label("Log", systemImage: "keyboard.macwindow")
                         }
                     
                     AboutView()
                         .tabItem {
-                            Label("About", systemImage: "info.circle")
+                            Label("About", systemImage: "questionmark.app.dashed")
                         }
                     SettingsView()
                         .tabItem {
