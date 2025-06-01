@@ -1387,6 +1387,8 @@ __attribute__((constructor))  int constructor(){
             debug("Issuing sandbox extensions...\n");
             sbtoken("/Library", 0);
             sbtoken("/private/var/mobile/Library", 0);
+            sbtoken("/private/var/mobile/Documents", 0);
+            sbtoken("/private/var/mobile/Documents/escape", 0);
             sbtoken("/private/var/mnt", 0);
             sbtoken("/private/var/db", 0);
             sbtoken("/private/var/stash", 0);
