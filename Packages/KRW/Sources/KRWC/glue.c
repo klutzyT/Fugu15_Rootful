@@ -14,12 +14,14 @@
 //#include "libkfd/krkw/kread/kread_IOSurface.h"
 #include "libkfd/libkfd.h"
 #include "libkfd/info.h"
+#include <sys/syscall.h>
 
 // Stuff needed for badRecovery/tlbFail
 KernelOffsetInfo gOffsets;
 uint64_t gOurTask;
 uint64_t gKernelPmap;
 
+// kfd kernrw handler
 uint64_t _kfd = 0;
 
 // tfp0

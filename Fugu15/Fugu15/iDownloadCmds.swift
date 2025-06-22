@@ -17,6 +17,7 @@ import UIKit
 
 let Ngenerator = UINotificationFeedbackGenerator()
 
+
 let iDownloadCmds = [
     "help": iDownload_help,
     "autorun": iDownload_autorun,
@@ -588,7 +589,6 @@ func iDownload_bootstrap(_ hndlr: iDownloadHandler, _ cmd: String, _ args: [Stri
     var status = try hndlr.exec("/var/jb/usr/bin/sh", args: ["/var/jb/prep_bootstrap.sh"])
     
     try hndlr.sendline("prep_bootstrap.sh: \(status)")
-    
     if access(sileo, F_OK) == 0 {
         try hndlr.sendline("Installing Sileo...")
         status = try hndlr.exec("/var/jb/usr/bin/dpkg", args: ["-i", sileo])

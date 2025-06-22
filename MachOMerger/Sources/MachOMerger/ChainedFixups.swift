@@ -87,7 +87,7 @@ func mergeChainedFixups(infoA: MachOMergeData, infoB: MachOMergeData, relocInfo:
                 }
                 
                 guard let sym = cf.symbol(forFixup: content) else {
-                    print("Couldn't find symbol in imports table!")
+                    consolelog("Couldn't find symbol in imports table!")
                     exit(-1)
                 }
                 
@@ -101,7 +101,7 @@ func mergeChainedFixups(infoA: MachOMergeData, infoB: MachOMergeData, relocInfo:
                 }
                 
                 guard dst != nil else {
-                    print("Cannot resolve symbol \(sym)!")
+                    consolelog("Cannot resolve symbol (chainedFixups 1)\(sym)!")
                     exit(-1)
                 }
                 
@@ -114,7 +114,7 @@ func mergeChainedFixups(infoA: MachOMergeData, infoB: MachOMergeData, relocInfo:
                 var data = segment.1
                 let dat = data.getGeneric(type: UInt64.self, offset: UInt(segment.3))
                 guard dat == content.rawValue else {
-                    print("XXX: ChainedFixups .bind err!")
+                    consolelog("XXX: ChainedFixups .bind err!")
                     exit(-1)
                 }
                 
@@ -130,7 +130,7 @@ func mergeChainedFixups(infoA: MachOMergeData, infoB: MachOMergeData, relocInfo:
                 }
                 
                 guard dst != nil else {
-                    print("Cannot resolve symbol \(sym)!")
+                    consolelog("Cannot resolve symbol (chained_fixups 2)\(sym)!")
                     exit(-1)
                 }
                 
@@ -218,20 +218,20 @@ func mergeChainedFixups(infoA: MachOMergeData, infoB: MachOMergeData, relocInfo:
                 let pgSizeA = a.getGeneric(type: UInt16.self, offset: 0x0)
                 let pgSizeB = b.getGeneric(type: UInt16.self, offset: 0x0)
                 guard pgSizeA == pgSizeB else {
-                    print("mergeChainedFixups: Page Size not equal!")
+                    consolelog("mergeChainedFixups: Page Size not equal!")
                     exit(-1)
                 }
                 
                 let pageOffMask = UInt64(pgSizeA) - 1
                 let diff = offB - offA
                 guard diff & pageOffMask == 0 else {
-                    print("mergeChainedFixups: Distance not multiple of page size!")
+                    consolelog("mergeChainedFixups: Distance not multiple of page size!")
                     exit(-1)
                 }
                 
                 let pageDiff = diff / UInt64(pgSizeA)
                 guard pageDiff < UInt16.max else {
-                    print("mergeChainedFixups: Distance too large!")
+                    consolelog("mergeChainedFixups: Distance too large!")
                     exit(-1)
                 }
                 

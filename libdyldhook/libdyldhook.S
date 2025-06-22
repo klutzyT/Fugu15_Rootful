@@ -35,6 +35,45 @@ _real_simple_getenv:
 _MACHOMERGER_HOOKTRAMPOLINE__simple_getenv:
     b . // Will be patched by machomerger
 
+
+.global _real_ZN5dyld3L23mapSplitCacheSystemWideERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE
+.global _MACHOMERGER_HOOKTRAMPOLINE__ZN5dyld3L23mapSplitCacheSystemWideERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE
+_real_ZN5dyld3L23mapSplitCacheSystemWideERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE:
+    pacibsp
+    // FALLTHROUGH
+_MACHOMERGER_HOOKTRAMPOLINE__ZN5dyld3L23mapSplitCacheSystemWideERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE:
+    b . // Will be patched by machomerger
+
+.global _real_ZNK5dyld313MachOAnalyzer16hasCodeSignatureERjS1_
+.global _MACHOMERGER_HOOKTRAMPOLINE__ZNK5dyld313MachOAnalyzer16hasCodeSignatureERjS1_
+_real_ZNK5dyld313MachOAnalyzer16hasCodeSignatureERjS1_:
+    pacibsp
+_MACHOMERGER_HOOKTRAMPOLINE__ZNK5dyld313MachOAnalyzer16hasCodeSignatureERjS1_:
+    b .
+
+.global _real_ZN5dyld44APIs6dlopenEPKci
+.global _MACHOMERGER_HOOKTRAMPLOINE__ZN5dyld44APIs6dlopenEPKci
+_real_ZN5dyld44APIs6dlopenEPKci:
+    mov x3, x30
+_MACHOMERGER_HOOKTRAMPLOINE__ZN5dyld44APIs6dlopenEPKci:
+    b . 
+
+.global _real_ZN5dyld44APIs5dlsymEPvPKc
+.global _MACHOMERGER_HOOKTRAMPOLINE__ZN5dyld44APIs5dlsymEPvPKc
+_real_ZN5dyld44APIs5dlsymEPvPKc:
+    pacibsp
+_MACHOMERGER_HOOKTRAMPOLINE__ZN5dyld44APIs5dlsymEPvPKc:
+    b .
+
+.global _real_ZN5dyld3L18reuseExistingCacheERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE
+.global _MACHOMERGER_HOOKTRAMPOLINE__ZN5dyld3L18reuseExistingCacheERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE
+_real_ZN5dyld3L18reuseExistingCacheERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE:
+    pacibsp
+_MACHOMERGER_HOOKTRAMPOLINE__ZN5dyld3L18reuseExistingCacheERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE:
+    b .
+
+
+
 MAKE_TRAMPOLINE(MACHOMERGER_REAL_START)
 MAKE_TRAMPOLINE(cerror)
 MAKE_TRAMPOLINE_ALIAS(__getpid, getpid)
@@ -50,9 +89,14 @@ MAKE_TRAMPOLINE_ALIAS(_kernelrpc_mach_vm_deallocate_trap, vm_deallocate)
 MAKE_TRAMPOLINE(vm_protect)
 MAKE_TRAMPOLINE(memcpy)
 MAKE_TRAMPOLINE(strcmp)
+MAKE_TRAMPOLINE(strcpy)
+MAKE_TRAMPOLINE_ALIAS(mig_get_reply_port, dyld_mig_get_reply_port)
 
 DEF_SYSCALL(read, 3)
 DEF_SYSCALL(lseek, 199)
+DEF_SYSCALL(__sandbox_ms, 381)
+
+
 
 .data
 .global ___stack_chk_guard

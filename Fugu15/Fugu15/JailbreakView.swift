@@ -123,6 +123,8 @@ struct JailbreakView: View {
         textStatus1 = s
     }
     
+    
+    
     func launchExploit() {
         do {
             /*let krw = try Fugu15DKKRW(oobPCI: Bundle.main.bundleURL.appendingPathComponent("oobPCI")) { msg in

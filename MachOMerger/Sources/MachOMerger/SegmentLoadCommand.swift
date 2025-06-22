@@ -85,7 +85,15 @@ func generateSegmentLoadCommands(infoA: MachOMergeData, infoB: MachOMergeData, r
             for sect in seg.1[1].origCommand.sections {
                 var sectLC = section_64()
                 _ = withUnsafeMutableBytes(of: &sectLC.sectname) { ptr in
-                    strcpy(ptr.baseAddress!, sect.section + "_2")
+                    if sect.section != "__jbinfo" {
+                        // Special case, "__DATA:__jbinfo" section should not be appended with "_2"
+                        // Ideally I would have added a check here to only add _2 if the section already exists in file a
+                        // But then again this is Swift
+                        strcpy(ptr.baseAddress!, sect.section + "_2")
+                    }
+                    else {
+                        strcpy(ptr.baseAddress!, sect.section)
+                    }
                 }
                 _ = withUnsafeMutableBytes(of: &sectLC.segname) { ptr in
                     strcpy(ptr.baseAddress!, seg.0)

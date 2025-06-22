@@ -51,7 +51,7 @@ public func log(_ str: String) {
 
 func consolelog(_ str: String) {
     var inf = str + "\n"
-    let logger = URL(fileURLWithPath: "/var/mobile/Documents/console")
+    let logger = URL(fileURLWithPath: "/var/mobile/Documents/console") // wierd but I found this THE EASIEST
     do{
         if let handle = try? FileHandle(forWritingTo: logger) {
             handle.seekToEndOfFile()
@@ -130,10 +130,10 @@ func csdebug(request: XPCDict, reply: XPCDict) -> UInt64 {
     guard let proc = try? Proc(pid: pid_t(pid)) else {return 2}
     guard let flags = proc.cs_flags else {return 3}
     
-    consolelog("flags: \(flags)")
+    //consolelog("flags: \(flags)")
     let flags_new = (flags & ~0x703b10)
-    proc.cs_flags = flags_new | CS_SIGNED | CS_DYLD_PLATFORM | CS_VALID | CS_EXEC_INHERIT_SIP | CS_INSTALLER | CS_DEBUGGED | CS_INVALID_ALLOWED | CS_GET_TASK_ALLOW | CS_REQUIRE_LV
-    consolelog("flags_new: \(proc.cs_flags)")
+    proc.cs_flags = flags_new //| CS_SIGNED | CS_DYLD_PLATFORM | CS_VALID | CS_EXEC_INHERIT_SIP | CS_INSTALLER | CS_DEBUGGED | CS_INVALID_ALLOWED | CS_GET_TASK_ALLOW
+    //consolelog("flags_new: \(proc.cs_flags)")
     guard let pmap = proc.task?.vmMap?.pmap else {
         return 4
     }
@@ -157,6 +157,7 @@ func csdebug(request: XPCDict, reply: XPCDict) -> UInt64 {
     }
     return 0
 }
+
 
 func trustcdhash(request: XPCDict) -> UInt64 {
     log("Doing trustcdhash")
@@ -312,6 +313,7 @@ func fixpermanent(request: XPCDict) -> UInt64 {
     return 0
 }
 
+
 func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
     if let action = request["action"] as? String {
         console = open("/dev/console",O_RDWR)
@@ -321,7 +323,7 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
         switch action {
         case "fix_setuid":
             return fix_setuid(request: request)
-        
+            
         case "csdebug":
             return csdebug(request: request, reply: reply)
             
@@ -336,6 +338,7 @@ func handleXPC(request: XPCDict, reply: XPCDict) -> UInt64 {
             
         case "fixpermanent":
             return fixpermanent(request: request)
+            
 
         default:
             break

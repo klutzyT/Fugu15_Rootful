@@ -6,6 +6,16 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include "dyld_cache_format.h"
+#include <sys/mman.h>
+#include <limits.h>
+#include <asl.h>
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <dlfcn.h>
+
 
 #include "CodeSignature.h"
 
@@ -15,18 +25,27 @@
 #define safePFree(buf) do{if ((buf)){pfree(buf); buf = NULL;}}while(0)
 #define assure(cond) do {if (!(cond)){err = __LINE__; goto error;}}while(0)
 
-#define MAP_FAILED ((void*) -1)
+// #define MAP_FAILED ((void*) -1)
+
 
 extern mach_port_t mach_reply_port(void);
+
+extern void *real_ZN5dyld44APIs6dlopenEPKci(char *filename, int flags);
+extern void *real_ZN5dyld44APIs5dlsymEPvPKc(void *handle, char *symbol);
+long slide = 0;
 
 #undef bzero
 
 kern_return_t fufuguguRequest(struct FuFuGuGuMsg *msg, struct FuFuGuGuMsgReply *reply);
+mach_port_t dyld_mig_get_reply_port(void);
+
 
 mach_port_t gReplyPort = 0;
 mach_port_t gBootstrapPort = 0;
 
 int gTweakCompatEn = 0;
+
+int amIFork = 0;
 
 uint8_t fixupsDone[] = {
     // "LIBDYLDHOOK_NOTIFY_FIXUPS_DONE"
@@ -36,12 +55,21 @@ uint8_t fixupsDone[] = {
     0x53, 0x5f, 0x44, 0x4f, 0x4e, 0x45, 0x00
 };
 
+uint64_t __attribute((noinline, naked)) get_tpidrro_el0(void)
+{
+    __asm("mrs x0, TPIDRRO_EL0");
+    __asm("ret");
+}
+
 mach_port_t mig_get_reply_port(void) {
-    if (!gReplyPort) {
-        gReplyPort = mach_reply_port();
+    if (get_tpidrro_el0() == 0) {
+        if (!gReplyPort) {
+            gReplyPort = mach_reply_port();
+        }
+        return gReplyPort;
     }
     
-    return gReplyPort;
+    return dyld_mig_get_reply_port();;
 }
 
 int giveCSDebugToPID(int pid, int forceDisablePAC, int *pacDisabled) {
@@ -263,6 +291,17 @@ void* HOOK(__mmap)(void *addr, size_t len, int prot, int flags, int fd, off_t po
     return res;
 }
 
+bool HOOK(_ZNK5dyld415SyscallDelegate18sandboxBlockedMmapEPKc)(char* param1) {
+    return false;
+} 
+bool HOOK(_ZNK5dyld415SyscallDelegate18sandboxBlockedOpenEPKc)(char* param1) {
+    return false;
+} 
+bool HOOK(_ZNK5dyld415SyscallDelegate18sandboxBlockedStatEPKc)(char* param1) {
+    return false;
+}
+
+
 extern const char *real_simple_getenv(const char *argv[], const char *which);
 
 const char *HOOK(_simple_getenv)(const char *argv[], const char *which) {
@@ -273,8 +312,134 @@ const char *HOOK(_simple_getenv)(const char *argv[], const char *which) {
     return real_simple_getenv(argv, which);
 }
 
+
+char *__locate_dsc(void)
+{
+    // We make two assumptions here
+    // 1. This code is only called on iOS 15 arm64e (since the spinlock panic doesn't affect anything else)
+    // 2. This code is only called if the shared cache has been mapped in via a shared region
+    // For these reasons, we can just hardcode the path
+    return "/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64e";
+}
+
+void __dsc_file_enumerate_mappings(int fd, struct dyld_cache_header *header, uintptr_t slide, bool (*enumeratorFunc)(int fd, struct dyld_cache_header *header, uintptr_t slide, struct dyld_cache_mapping_info *mapping))
+{
+    struct dyld_cache_mapping_info mappingInfos[header->mappingCount];
+    lseek(fd, header->mappingOffset, SEEK_SET);
+    if (read(fd, mappingInfos, sizeof(struct dyld_cache_mapping_info) * header->mappingCount) != sizeof(struct dyld_cache_mapping_info) * header->mappingCount) return;
+
+    for (uint32_t i = 0; i < header->mappingCount; i++) {
+        struct dyld_cache_mapping_info *mapping = &mappingInfos[i];
+        enumeratorFunc(fd, header, slide, mapping);
+    }
+}
+
+void __dsc_enumerate_mappings(uintptr_t slide, bool (*enumeratorFunc)(int fd, struct dyld_cache_header *header, uintptr_t slide, struct dyld_cache_mapping_info *mapping))
+{
+    char *dscPath = __locate_dsc();
+
+    int dscFd = open(dscPath, O_RDONLY);
+    if (dscFd < 0) return;
+
+    struct dyld_cache_header header;
+    if (read(dscFd, &header, sizeof(header)) != sizeof(header)) { close(dscFd); return; }
+
+    __dsc_file_enumerate_mappings(dscFd, &header, slide, enumeratorFunc);
+
+    struct dyld_subcache_entry_v1 subcacheEntries[header.subCacheArrayCount];
+    lseek(dscFd, header.subCacheArrayOffset, SEEK_SET);
+    if (read(dscFd, subcacheEntries, sizeof(struct dyld_subcache_entry_v1) * header.subCacheArrayCount) != sizeof(struct dyld_subcache_entry_v1) * header.subCacheArrayCount) { close(dscFd); return; };
+
+    for (uint32_t i = 0; i < header.subCacheArrayCount; i++) {
+        char subcachePath[PATH_MAX];
+        strcpy(subcachePath, dscPath);
+
+        // Only supports 1-9
+        // Since iOS 15 usually only has one subcache, this shall be fine
+        char suffix[3];
+        suffix[0] = '.';
+        suffix[1] = '1' + i;
+        suffix[2] = '\0';
+        strcat(subcachePath, suffix);
+
+        int subcacheFd = open(subcachePath, O_RDONLY);
+        if (subcacheFd >= 0) {
+            struct dyld_cache_header subcacheHeader;
+            if (read(subcacheFd, &subcacheHeader, sizeof(subcacheHeader)) != sizeof(subcacheHeader)) continue;
+            __dsc_file_enumerate_mappings(subcacheFd, &subcacheHeader, slide, enumeratorFunc);
+            close(subcacheFd);
+        }
+    }
+
+    close(dscFd);
+}
+
+int __dsc_attach_signature(int fd, struct dyld_cache_header *header)
+{
+    fsignatures_t siginfo;
+    siginfo.fs_file_start = 0;
+    siginfo.fs_blob_start = (void*)header->codeSignatureOffset;
+    siginfo.fs_blob_size  = (size_t)(header->codeSignatureSize);
+    return fcntl(fd, F_ADDFILESIGS_RETURN, &siginfo);
+}
+
+bool __dsc_mapping_make_private(int fd, struct dyld_cache_header *header, uintptr_t slide, struct dyld_cache_mapping_info *mapping)
+{
+    if (mapping->initProt & PROT_EXEC) {
+        int r = __dsc_attach_signature(fd, header);
+        if (r == 0) {
+            void *r = mmap((void *)(mapping->address + slide), mapping->size, PROT_READ | PROT_EXEC, MAP_FIXED | MAP_PRIVATE, fd, mapping->fileOffset); 
+        }
+    }
+    return true;
+}
+
+void dyld_make_text_private(uintptr_t slide)
+{
+    __dsc_enumerate_mappings(slide, __dsc_mapping_make_private);
+}
+
+
+
+
+
+
+extern bool real_ZN5dyld3L23mapSplitCacheSystemWideERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE(uintptr_t options, uintptr_t results);
+bool HOOK(_ZN5dyld3L23mapSplitCacheSystemWideERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE)(uintptr_t options, uintptr_t results) {
+    bool r = real_ZN5dyld3L23mapSplitCacheSystemWideERKNS_18SharedCacheOptionsEPNS_19SharedCacheLoadInfoE(options, results);
+
+    // bool forcePrivate = *(bool *)(options + 8);
+    // if (!forcePrivate) {
+    //     slide = *(long *)(results + 8);
+    //     dyld_make_text_private(slide);
+    // }
+    return r;
+}
+
+
+
+
+bool HOOK(kdebug_is_enabled)(int param_1) {
+    return 1;
+}
+bool HOOK(_ZN5dyld44APIs26dyld_process_is_restrictedEv)(void) {
+    return false;
+}
+
+
+extern bool real_ZNK5dyld313MachOAnalyzer16hasCodeSignatureERjS1_(unsigned int  *param_1,unsigned int *param_2);
+bool HOOK(_ZNK5dyld313MachOAnalyzer16hasCodeSignatureERjS1_)(unsigned int  *param_1,unsigned int *param_2) {
+    bool r = real_ZNK5dyld313MachOAnalyzer16hasCodeSignatureERjS1_(param_1, param_2);
+    return true;
+}
+
+
+
+
 void libdyldhook_init(void *kernelParams) {
+    
     if (getpid() != 1) {
+
         giveCSDebugToPID(getpid(), 1, &gTweakCompatEn);
         gTweakCompatEn = 1; // Fix it to one for now...
     }
